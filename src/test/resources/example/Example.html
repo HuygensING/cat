@@ -1,0 +1,32 @@
+<html xmlns:c="http://www.concordion.org/2007/concordion"
+      xmlns:h="http://huygens.knaw.nl/concordion-acceptance-test"
+      xmlns:xsi="http://www.w3.org/1999/xhtml"
+      xsi:schemaLocation="http://huygens.knaw.nl/concordion-acceptance-test
+                          http://huygensing.github.io/alexandria/xsd/concordion-rest.xsd">
+
+<title>Example Concordion Acceptance Test</title>
+
+<body class="container">
+
+<h2 class="page-header">Example GET test</h2>
+
+<div id="create-post" class="panel panel-default">
+    <div class="panel-heading"><b>Let's test a GET</b> </div>
+    <div class="panel-body">
+        <h:request>
+            When I <h:get>/example</h:get> using <h:setHeader name="accept">text/html</h:setHeader>
+            I should receive <h:status>200 OK</h:status> and response body:
+            <h:responseBody>Hello world</h:responseBody>
+        </h:request>
+
+        <h:request>
+            When I <h:get>/example</h:get> using <h:setHeader name="accept">application/json</h:setHeader>
+            I should receive <h:status>200 OK</h:status> and response body:
+            <h:jsonResponse>{ "hello": "world" }</h:jsonResponse>
+        </h:request>
+    </div>
+</div>
+
+</body>
+
+</html>
