@@ -136,6 +136,8 @@ public class RestFixture extends JerseyTest {
 
   public void request(String method, String path) {
     Log.trace("request: method=[{}], path=[{}]", method, path);
+
+    // TODO: don't always ask for JSON, esp. when accept-header is set
     Builder invoker = target.path(path).request(APPLICATION_JSON_TYPE);
 
     for (Map.Entry<String, String> entry : headers.entrySet()) {
