@@ -139,4 +139,19 @@
     </repository>
   </repositories>
 
+  <distributionManagement>
+    <repository>
+      <id>maven.huygens</id>
+      <name>Huygens Maven Repository</name>
+      <url>${huygens-repo}</url>
+    </repository>
+
+    <snapshotRepository>
+      <id>maven.huygens</id>
+      <name>Huygens Maven Repository</name>
+      <url>${huygens-repo}</url>
+      <uniqueVersion>false</uniqueVersion>
+    </snapshotRepository>
+  </distributionManagement>
+
 </project>
