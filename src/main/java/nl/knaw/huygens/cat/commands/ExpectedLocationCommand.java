@@ -1,6 +1,7 @@
 package nl.knaw.huygens.cat.commands;
 
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Supplier;
 
 import com.google.common.base.Splitter;
@@ -44,6 +45,8 @@ public class ExpectedLocationCommand extends AbstractHuygensCommand {
         return baseOf(location);
       case "full":
         return location;
+      case "uuid":
+        return uuidQuality(location);
       default:
         throw new IllegalArgumentException("Illegal type: " + type);
     }
@@ -60,6 +63,19 @@ public class ExpectedLocationCommand extends AbstractHuygensCommand {
 
   private String tailOf(String s) {
     return Iterables.getLast(Splitter.on('/').split(s));
+  }
+
+  private String uuidQuality(String location) {
+    final String idStr = tailOf(location);
+    return parse(idStr).map(uuid -> "well-formed UUID").orElseGet(malformedDescription(idStr));
+  }
+
+  private Optional<UUID> parse(String idStr) {
+    try {
+      return Optional.of(UUID.fromString(idStr));
+    } catch (IllegalArgumentException dulyNoted) {
+      return Optional.empty();
+    }
   }
 
   private Supplier<String> malformedDescription(String idStr) {

@@ -53,6 +53,7 @@
             <restriction base="string">
               <enumeration value="base"/>
               <enumeration value="full"/>
+              <enumeration value="uuid"/>
             </restriction>
           </simpleType>
         </attribute>
