@@ -32,7 +32,12 @@ public class ExpectedResponseBodyCommand extends AbstractHuygensCommand {
       }
     } else {
       if (actualBody.isPresent()) {
-        succeed(resultRecorder, element);
+        if (actualBody.get().equals(expectedBody)) {
+          succeed(resultRecorder, element);
+        }
+        else {
+          fail(resultRecorder, element, actualBody.get(), expectedBody);
+        }
       } else {
         fail(resultRecorder, element, "(not set)", expectedBody);
       }
