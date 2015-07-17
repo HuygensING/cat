@@ -1,7 +1,6 @@
 package nl.knaw.huygens.cat;
 
 import static java.lang.String.format;
-import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON_TYPE;
 import static javax.ws.rs.core.Response.Status.Family.REDIRECTION;
 import static javax.ws.rs.core.Response.Status.Family.SUCCESSFUL;
@@ -16,11 +15,11 @@ import javax.ws.rs.core.Response.Status.Family;
 import javax.ws.rs.core.Response.StatusType;
 import javax.ws.rs.core.UriBuilder;
 import java.net.URI;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import com.google.inject.AbstractModule;
 import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.squarespace.jersey2.guice.BootstrapUtils;
@@ -30,7 +29,6 @@ import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTest;
 import org.glassfish.jersey.test.TestProperties;
-import org.junit.BeforeClass;
 
 @Extensions(RestExtension.class)
 public class RestFixture extends JerseyTest {
@@ -58,15 +56,14 @@ public class RestFixture extends JerseyTest {
 
   private String url;
 
-  @BeforeClass
-  public static void setup() {
+  public static void setupRestFixture(Module module) {
     Log.debug("Setting up Jersey");
 
     application = new AcceptanceTestApplication();
     Log.trace("+- application=[{}]", application);
 
     if (!jersey2GuiceBridgeInitialised) {
-      initialiseJersey2GuiceBridge();
+      initialiseJersey2GuiceBridge(module);
       jersey2GuiceBridgeInitialised = true;
     }
   }
@@ -75,31 +72,17 @@ public class RestFixture extends JerseyTest {
     application.register(componentClass);
   }
 
-  private static void initialiseJersey2GuiceBridge() {
+  private static void initialiseJersey2GuiceBridge(Module module) {
     Log.debug("Bootstrapping Jersey2-Guice bridge");
 
     final ServiceLocator locator = BootstrapUtils.newServiceLocator();
     Log.trace("+- locator=[{}]", locator);
 
-    final Injector injector = BootstrapUtils.newInjector(locator, singletonList(baseModule()));
+    final Injector injector = BootstrapUtils.newInjector(locator, Collections.singletonList(module));
     Log.trace("+- injector=[{}]", injector);
 
     BootstrapUtils.install(locator);
     Log.trace("+- done: locator installed");
-  }
-
-  private static Module baseModule() {
-    return new AbstractModule() {
-      @Override
-      protected void configure() {
-        Log.trace("setting up Guice bindings");
-//        bind(AlexandriaService.class).toInstance(service);
-//        bind(AlexandriaConfiguration.class).toInstance(CONFIG);
-//        bind(AnnotationEntityBuilder.class).in(Scopes.SINGLETON);
-//        bind(EndpointPathResolver.class).in(Scopes.SINGLETON);
-//        bind(ResourceEntityBuilder.class).in(Scopes.SINGLETON);
-      }
-    };
   }
 
   public void clear() {
@@ -137,8 +120,14 @@ public class RestFixture extends JerseyTest {
   public void request(String method, String path) {
     Log.trace("request: method=[{}], path=[{}]", method, path);
 
-    // TODO: don't always ask for JSON, esp. when accept-header is set
-    Builder invoker = target.path(path).request(APPLICATION_JSON_TYPE);
+    target = target.path(path);
+
+    Builder invoker;
+    if (headers.containsKey("accept")) {
+      invoker = target.request();
+    } else {
+      invoker = target.request(APPLICATION_JSON_TYPE);
+    }
 
     for (Map.Entry<String, String> entry : headers.entrySet()) {
       Log.trace("header: {}: {}", entry.getKey(), entry.getValue());
@@ -203,10 +192,6 @@ public class RestFixture extends JerseyTest {
     return family == SUCCESSFUL || family == REDIRECTION;
   }
 
-  private StatusType statusInfo() {
-    return response.getStatusInfo();
-  }
-
   @Override
   protected Application configure() {
     enable(TestProperties.LOG_TRAFFIC);
@@ -217,6 +202,10 @@ public class RestFixture extends JerseyTest {
   @Override
   protected URI getBaseUri() {
     return BASE_URI;
+  }
+
+  private StatusType statusInfo() {
+    return response.getStatusInfo();
   }
 
   private String normalizeHostInfo(String s) {
