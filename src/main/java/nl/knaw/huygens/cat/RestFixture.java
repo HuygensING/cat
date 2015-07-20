@@ -69,6 +69,7 @@ public class RestFixture extends JerseyTest {
   }
 
   protected static void register(Class<?> componentClass) {
+    Log.trace("Registering: [{}]", componentClass.getName());
     application.register(componentClass);
   }
 
