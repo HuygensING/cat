@@ -69,6 +69,9 @@ public class RestExtension implements ConcordionExtension {
   private void registerBootstrap(ConcordionExtender extender) {
     linkCSS(extender, "/bootstrap/bootstrap.css");
     linkCSS(extender, "/bootstrap/enable-bootstrap.css");
+
+    linkJavaScript(extender, "/jquery/jquery.min.js");
+    linkJavaScript(extender, "/bootstrap/bootstrap.min.js");
   }
 
   private void linkCSS(ConcordionExtender extender, String location) {
