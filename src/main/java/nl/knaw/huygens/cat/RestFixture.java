@@ -155,6 +155,7 @@ public class RestFixture extends JerseyTest {
   }
 
   public void body(String body) {
+    Log.trace("body set to: [{}]", body);
     optionalBody = Optional.of(body);
   }
 
