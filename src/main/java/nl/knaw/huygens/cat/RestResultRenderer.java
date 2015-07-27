@@ -31,14 +31,11 @@ public class RestResultRenderer implements AssertEqualsListener, AssertTrueListe
 
     Element spanActual = new Element(ELEM_INS);
     spanActual.addStyleClass(STYLE_ACTUAL);
-    spanActual.appendText(convertToString(event.getActual()));
+    spanActual.appendText(String.valueOf(event.getActual()));
     spanActual.appendNonBreakingSpaceIfBlank();
 
     element.appendText("\n");
     element.appendChild(spanActual);
   }
 
-  private String convertToString(Object obj) {
-    return obj == null ? "(null)" : obj.toString();
-  }
 }
