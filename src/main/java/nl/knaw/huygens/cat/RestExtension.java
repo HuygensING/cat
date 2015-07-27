@@ -1,29 +1,25 @@
 package nl.knaw.huygens.cat;
 
-import java.lang.annotation.Annotation;
-import java.util.Map;
-import java.util.Set;
-
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import nl.knaw.huygens.Log;
-import nu.xom.Attribute;
-import nu.xom.Document;
-import nu.xom.Element;
-import nu.xom.Elements;
 import org.concordion.api.Command;
 import org.concordion.api.Resource;
 import org.concordion.api.extension.ConcordionExtender;
 import org.concordion.api.extension.ConcordionExtension;
-import org.concordion.api.listener.DocumentParsingListener;
 import org.concordion.internal.ConcordionBuilder;
 import org.concordion.internal.SimpleEvaluator;
 import org.reflections.Reflections;
 
-public class RestExtension implements ConcordionExtension {
-  public static final String EXTENSION_NS = "http://huygens.knaw.nl/concordion-acceptance-test";
+import java.lang.annotation.Annotation;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
 
-  private final Set<Class<? extends Command>> commands = Sets.newHashSet();
+import static nl.knaw.huygens.cat.TagTranslator.forTags;
+
+public class RestExtension implements ConcordionExtension {
+  private final Set<Class<? extends Command>> commandClasses = Sets.newHashSet();
   private final Map<String, String> htmlCommandTags = Maps.newHashMap();
 
   public RestExtension() {
@@ -34,7 +30,7 @@ public class RestExtension implements ConcordionExtension {
   @Override
   public void addTo(ConcordionExtender concordionExtender) {
     registerCommands(concordionExtender);
-    registerCommandToHtmlTranslator(concordionExtender);
+    installCommandToHtmlTagTranslator(concordionExtender);
     registerCodeMirror(concordionExtender);
     registerBootstrap(concordionExtender);
 
@@ -97,7 +93,7 @@ public class RestExtension implements ConcordionExtension {
       final int annotatedClassesCount = annotatedClasses.size();
       final String annotationName = annotationClass.getSimpleName();
       final String classOrClasses = annotatedClassesCount == 1 ? "class" : "classes";
-      Log.debug("Found {} @{} annotated {}", annotatedClassesCount, annotationName, classOrClasses);
+      Log.debug("Found {} @{} annotated {}:", annotatedClassesCount, annotationName, classOrClasses);
     }
 
     return annotatedClasses;
@@ -106,23 +102,34 @@ public class RestExtension implements ConcordionExtension {
   @SuppressWarnings("unchecked")
   private void addCommand(Class<?> candidate) {
     if (Command.class.isAssignableFrom(candidate)) {
-      Log.trace("Adding command: {}", candidate);
-      commands.add((Class<? extends Command>) candidate);
+      Log.trace("+- {}", candidate.getCanonicalName());
+      commandClasses.add((Class<? extends Command>) candidate);
     } else {
       Log.warn("Ignoring @{} class {} as it does not implement {}", //
           HuygensCommand.class.getSimpleName(), candidate.getName(), Command.class.getName());
     }
   }
 
-  private void registerCommands(ConcordionExtender concordionExtender) {
-    commands.stream().forEach(cmd -> {
-      final HuygensCommand annotation = cmd.getAnnotation(HuygensCommand.class);
-      final String name = annotation.name();
-      final String tag = annotation.htmlTag();
-      Log.trace("Command <{}> is translated to HTML tag <{}> and handled by {}", name, tag, cmd.getSimpleName());
-      htmlCommandTags.put(name, tag);
-      concordionExtender.withCommand(EXTENSION_NS, name, instantiate(cmd));
-    });
+  private void registerCommands(ConcordionExtender extender) {
+    commandClasses.stream().forEach(cmdClass -> registerCommand(extender, cmdClass));
+  }
+
+  private void registerCommand(ConcordionExtender extender, Class<? extends Command> commandClass) {
+    final HuygensCommand annotation = commandClass.getAnnotation(HuygensCommand.class);
+    registerCommand(extender, commandClass, annotation.name());
+    registerCommandTranslation(annotation);
+  }
+
+  private void registerCommand(ConcordionExtender extender, Class<? extends Command> command, String name) {
+    Log.trace("Command <{}> will be handled by {}", name, command.getSimpleName());
+    extender.withCommand(HuygensNamespace.asString(), name, instantiate(command));
+  }
+
+  private void registerCommandTranslation(HuygensCommand annotation) {
+    final String name = annotation.name();
+    final String tag = annotation.htmlTag();
+    Log.trace("Command <{}> will be translated to HTML tag <{}>", name, tag);
+    htmlCommandTags.put(name, tag);
   }
 
   private Command instantiate(Class<? extends Command> cmd) {
@@ -134,33 +141,12 @@ public class RestExtension implements ConcordionExtension {
     }
   }
 
-  private void registerCommandToHtmlTranslator(ConcordionExtender concordionExtender) {
-    concordionExtender.withDocumentParsingListener(new DocumentParsingListener() {
-      @Override
-      public void beforeParsing(Document document) {
-        translate(document.getRootElement());
-      }
+  private void installCommandToHtmlTagTranslator(ConcordionExtender concordionExtender) {
+    concordionExtender.withDocumentParsingListener(forTags(htmlCommandTagsView()));
+  }
 
-      private void translate(Element element) {
-        final Elements children = element.getChildElements();
-        for (int i = 0; i < children.size(); i++) {
-          translate(children.get(i));
-        }
-
-        if (EXTENSION_NS.equals(element.getNamespaceURI())) {
-          Attribute attr = new Attribute(element.getLocalName(), "");
-          attr.setNamespace("h", EXTENSION_NS);
-          element.addAttribute(attr);
-          element.setNamespacePrefix("");
-          element.setNamespaceURI(null);
-          element.setLocalName(translate(element.getLocalName()));
-        }
-      }
-
-      private String translate(String localName) {
-        return htmlCommandTags.getOrDefault(localName, localName);
-      }
-    });
+  private Map<String, String> htmlCommandTagsView() {
+    return Collections.unmodifiableMap(htmlCommandTags);
   }
 
 }
