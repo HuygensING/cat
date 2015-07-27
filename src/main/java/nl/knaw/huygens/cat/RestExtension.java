@@ -1,7 +1,5 @@
 package nl.knaw.huygens.cat;
 
-import static nl.knaw.huygens.cat.TagTranslator.forTags;
-
 import java.util.Collections;
 import java.util.Map;
 
@@ -65,25 +63,24 @@ public class RestExtension extends AbstractExtension {
   }
 
   private void addAnnotatedCommands(ConcordionExtender concordionExtender, Reflections scanner) {
-    scanner.getTypesAnnotatedWith(HuygensCommand.class).forEach(type -> addCommand(concordionExtender, type));
-  }
+    scanner.getTypesAnnotatedWith(HuygensCommand.class).forEach(type -> {
+      if (Command.class.isAssignableFrom(type)) {
+        Log.debug("Found: {}", type.getCanonicalName());
 
-  @SuppressWarnings("unchecked")
-  private void addCommand(ConcordionExtender concordionExtender, Class<?> candidateClass) {
-    if (Command.class.isAssignableFrom(candidateClass)) {
-      Log.debug("Found: {}", candidateClass.getCanonicalName());
+        @SuppressWarnings("unchecked")
+        final Class<? extends Command> commandClass = (Class<? extends Command>) type;
 
-      final HuygensCommand annotation = candidateClass.getAnnotation(HuygensCommand.class);
-      final Class<? extends Command> command = (Class<? extends Command>) candidateClass;
-      concordionExtender.withCommand(HuygensNamespace.asString(), annotation.name(), instantiate(command));
-      Log.trace("+- will handle command <{}>", annotation.name());
+        final HuygensCommand annotation = type.getAnnotation(HuygensCommand.class);
+        concordionExtender.withCommand(HuygensNamespace.asString(), annotation.name(), instantiate(commandClass));
+        Log.trace("+- will handle command <{}>", annotation.name());
 
-      commandNameToHtmlTagMapping.put(annotation.name(), annotation.htmlTag());
-      Log.trace("+- configures <{}> to be translated to HTML tag <{}>", annotation.name(), annotation.htmlTag());
-    } else {
-      Log.warn("Ignoring @{} class {} as it does not implement {}", //
-          HuygensCommand.class.getSimpleName(), candidateClass.getName(), Command.class.getCanonicalName());
-    }
+        commandNameToHtmlTagMapping.put(annotation.name(), annotation.htmlTag());
+        Log.trace("+- configures <{}> to be translated to HTML tag <{}>", annotation.name(), annotation.htmlTag());
+      } else {
+        Log.warn("Ignoring @{} class {} as it does not implement {}", //
+            HuygensCommand.class.getSimpleName(), type.getName(), Command.class.getCanonicalName());
+      }
+    });
   }
 
   private Command instantiate(Class<? extends Command> cmd) {
@@ -96,11 +93,9 @@ public class RestExtension extends AbstractExtension {
   }
 
   private void installCommandToHtmlTagTranslator(ConcordionExtender concordionExtender) {
-    concordionExtender.withDocumentParsingListener(forTags(htmlCommandTagsView()));
-  }
-
-  private Map<String, String> htmlCommandTagsView() {
-    return Collections.unmodifiableMap(commandNameToHtmlTagMapping);
+    final Map<String, String> readOnlyView = Collections.unmodifiableMap(commandNameToHtmlTagMapping);
+    final TagTranslator translator = TagTranslator.forTags(readOnlyView);
+    concordionExtender.withDocumentParsingListener(translator);
   }
 
   static class Config {
