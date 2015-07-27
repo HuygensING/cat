@@ -1,38 +1,56 @@
 package nl.knaw.huygens.cat;
 
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-import nl.knaw.huygens.Log;
-import org.concordion.api.Command;
-import org.concordion.api.Resource;
-import org.concordion.api.extension.ConcordionExtender;
-import org.concordion.api.extension.ConcordionExtension;
-import org.concordion.internal.ConcordionBuilder;
-import org.concordion.internal.SimpleEvaluator;
-import org.reflections.Reflections;
+import static nl.knaw.huygens.cat.TagTranslator.forTags;
 
 import java.lang.annotation.Annotation;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
-import static nl.knaw.huygens.cat.TagTranslator.forTags;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import nl.knaw.huygens.Log;
+import nl.knaw.huygens.cat.bootstrap.BootstrapExtension;
+import nl.knaw.huygens.cat.codemirror.CodeMirrorExtension;
+import org.concordion.api.Command;
+import org.concordion.api.extension.ConcordionExtender;
+import org.concordion.internal.ConcordionBuilder;
+import org.concordion.internal.SimpleEvaluator;
+import org.reflections.Reflections;
 
-public class RestExtension implements ConcordionExtension {
+public class RestExtension extends AbstractExtension {
   private final Set<Class<? extends Command>> commandClasses = Sets.newHashSet();
   private final Map<String, String> htmlCommandTags = Maps.newHashMap();
+
+  private final Config config = new Config();
 
   public RestExtension() {
     // TODO: get rid of nl.knaw.huygens, make this an external param somehow
     addAnnotatedCommands(new Reflections("nl.knaw.huygens"));
   }
 
+  public RestExtension includeBootstrap() {
+    config.includeBootstrap = true;
+    return this;
+  }
+
+  public RestExtension useCodeMirror() {
+    config.useCodeMirror = true;
+    return this;
+  }
+
   @Override
   public void addTo(ConcordionExtender concordionExtender) {
+    if (config.useCodeMirror) {
+      new CodeMirrorExtension().addTo(concordionExtender);
+    }
+
+    if (config.includeBootstrap) {
+      new BootstrapExtension().addTo(concordionExtender);
+    }
+
     registerCommands(concordionExtender);
     installCommandToHtmlTagTranslator(concordionExtender);
-    registerCodeMirror(concordionExtender);
-    registerBootstrap(concordionExtender);
 
     /* HACK to make the fixture (the instance of the JerseyTest) available in our Concordion Commands.
      *
@@ -48,38 +66,6 @@ public class RestExtension implements ConcordionExtension {
       }
       return new SimpleEvaluator(fixture);
     });
-  }
-
-  private void registerCodeMirror(ConcordionExtender extender) {
-    linkCSS(extender, "/codemirror/codemirror.css");
-    linkCSS(extender, "/codemirror/enable-codemirror.css");
-    linkCSS(extender, "/codemirror/merge.css");
-
-    linkJavaScript(extender, "/codemirror/codemirror.js");
-    linkJavaScript(extender, "/codemirror/javascript.js");
-    linkJavaScript(extender, "/codemirror/diff_match_patch.js");
-    linkJavaScript(extender, "/codemirror/merge.js");
-    linkJavaScript(extender, "/codemirror/enable-codemirror.js");
-  }
-
-  private void registerBootstrap(ConcordionExtender extender) {
-    linkCSS(extender, "/bootstrap/bootstrap.css");
-    linkCSS(extender, "/bootstrap/enable-bootstrap.css");
-
-    linkJavaScript(extender, "/jquery/jquery.min.js");
-    linkJavaScript(extender, "/bootstrap/bootstrap.min.js");
-  }
-
-  private void linkCSS(ConcordionExtender extender, String location) {
-    extender.withLinkedCSS(location, resource(location));
-  }
-
-  private void linkJavaScript(ConcordionExtender extender, String location) {
-    extender.withLinkedJavaScript(location, resource(location));
-  }
-
-  private Resource resource(String location) {
-    return new Resource(location);
   }
 
   private void addAnnotatedCommands(Reflections scanner) {
@@ -149,4 +135,8 @@ public class RestExtension implements ConcordionExtension {
     return Collections.unmodifiableMap(htmlCommandTags);
   }
 
+  static class Config {
+    boolean includeBootstrap;
+    boolean useCodeMirror;
+  }
 }

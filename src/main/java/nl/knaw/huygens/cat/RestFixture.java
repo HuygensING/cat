@@ -25,13 +25,11 @@ import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.squarespace.jersey2.guice.BootstrapUtils;
 import nl.knaw.huygens.Log;
-import org.concordion.api.extension.Extensions;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTest;
 import org.glassfish.jersey.test.TestProperties;
 
-@Extensions(RestExtension.class)
 public class RestFixture extends JerseyTest {
   private static final EnumSet<Family> SUCCESSFUL_STATUS_FAMILIES = EnumSet.of(REDIRECTION, SUCCESSFUL);
 

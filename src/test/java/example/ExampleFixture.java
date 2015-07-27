@@ -3,13 +3,17 @@ package example;
 import com.google.inject.AbstractModule;
 import com.google.inject.Module;
 import nl.knaw.huygens.Log;
+import nl.knaw.huygens.cat.RestExtension;
 import nl.knaw.huygens.cat.RestFixture;
+import org.concordion.api.extension.Extension;
 import org.concordion.integration.junit4.ConcordionRunner;
 import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 
 @RunWith(ConcordionRunner.class)
 public class ExampleFixture extends RestFixture {
+  @Extension
+  public RestExtension rest = new RestExtension().useCodeMirror().includeBootstrap();
 
   // Boiler-plate:
   @BeforeClass
