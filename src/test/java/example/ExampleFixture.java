@@ -16,10 +16,10 @@ public class ExampleFixture extends RestFixture {
   @Extension
   @SuppressWarnings("unused")
   public RestExtension extensionFoundViaReflection //
-      = new RestExtension() //
-//      .addPackages("nl.knaw.huygens") // "nl.knaw.huygens" is included; add more to scan for project specific commands
-      .useCodeMirror()               // Use CodeMirror to show side-by-side diffs when JSON results mismatch
-      .includeBootstrap();           // Bootstrap{.css,js} can be included to spice up the output
+      = new RestExtension()   //
+      .addPackages("example") // "nl.knaw.huygens.cat" is already included; add to scan for project specific commands
+      .useCodeMirror()        // Use CodeMirror to show side-by-side diffs when JSON results mismatch
+      .includeBootstrap();    // Bootstrap{.css,js} can be included to spice up the output
 
 
   // Boiler-plate:
@@ -27,6 +27,10 @@ public class ExampleFixture extends RestFixture {
   public static void setupExample() {
     setupRestFixture(guiceModule());  // Guice registration via com.google.inject.Module
     register(ExampleEndpoint.class);  // Jersey registration via inheritance through RestFixture
+  }
+
+  public void setupViaExampleCommand(String inputFromTestSpec) {
+    Log.trace("setup via ExampleCommand: [{}]", inputFromTestSpec);
   }
 
   private static Module guiceModule() {

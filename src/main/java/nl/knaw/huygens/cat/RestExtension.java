@@ -3,6 +3,7 @@ package nl.knaw.huygens.cat;
 import java.util.Collections;
 import java.util.Map;
 
+import com.google.common.base.Predicate;
 import com.google.common.collect.Maps;
 import nl.knaw.huygens.Log;
 import nl.knaw.huygens.cat.bootstrap.BootstrapExtension;
@@ -12,6 +13,8 @@ import org.concordion.api.extension.ConcordionExtender;
 import org.concordion.internal.ConcordionBuilder;
 import org.concordion.internal.SimpleEvaluator;
 import org.reflections.Reflections;
+import org.reflections.scanners.SubTypesScanner;
+import org.reflections.scanners.TypeAnnotationsScanner;
 import org.reflections.util.ConfigurationBuilder;
 
 public class RestExtension extends AbstractExtension {
@@ -99,7 +102,17 @@ public class RestExtension extends AbstractExtension {
   }
 
   static class Config {
-    private final ConfigurationBuilder builder = ConfigurationBuilder.build("nl.knaw.huygens");
+    private static String DEFAULT_PACKAGE = Config.class.getPackage().getName();
+    private static Predicate<String> IS_JAVA_CLASS_FILE = s -> s.endsWith(".class");
+    private static Predicate<String> IS_COMMAND = s -> s.startsWith(HuygensCommand.class.getCanonicalName());
+
+    private final ConfigurationBuilder builder = new ConfigurationBuilder() //
+        .forPackages(DEFAULT_PACKAGE) //
+        .filterInputsBy(IS_JAVA_CLASS_FILE) //
+        .setScanners( //
+            new SubTypesScanner(), //
+            new TypeAnnotationsScanner().filterResultsBy(IS_COMMAND));
+
     private boolean includeBootstrap;
     private boolean useCodeMirror;
 
