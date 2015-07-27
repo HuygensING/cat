@@ -12,8 +12,14 @@ import org.junit.runner.RunWith;
 
 @RunWith(ConcordionRunner.class)
 public class ExampleFixture extends RestFixture {
+  // Configuration of the RestExtension for this particular project:
   @Extension
-  public RestExtension rest = new RestExtension().useCodeMirror().includeBootstrap();
+  @SuppressWarnings("unused")
+  public RestExtension extensionFoundViaReflection //
+      = new RestExtension() //
+//      .addPackage("nl.knaw.huygens") // "nl.knaw.huygens" is included; add more to scan for project specific commands
+      .useCodeMirror()               // Use CodeMirror to show side-by-side diffs when JSON results mismatch
+      .includeBootstrap();           // Bootstrap{.css,js} can be included to spice up the output
 
   // Boiler-plate:
   @BeforeClass
