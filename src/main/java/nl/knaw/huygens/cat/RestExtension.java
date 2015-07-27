@@ -3,13 +3,10 @@ package nl.knaw.huygens.cat;
 import static nl.knaw.huygens.cat.TagTranslator.forTags;
 
 import java.lang.annotation.Annotation;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import nl.knaw.huygens.Log;
@@ -20,19 +17,12 @@ import org.concordion.api.extension.ConcordionExtender;
 import org.concordion.internal.ConcordionBuilder;
 import org.concordion.internal.SimpleEvaluator;
 import org.reflections.Reflections;
-import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 
 public class RestExtension extends AbstractExtension {
   private final Set<Class<? extends Command>> commandClasses = Sets.newHashSet();
   private final Map<String, String> htmlCommandTags = Maps.newHashMap();
-
   private final Config config = new Config();
-
-  public RestExtension() {
-    // TODO: get rid of nl.knaw.huygens, make this an external param somehow
-//    addAnnotatedCommands(new Reflections("nl.knaw.huygens"));
-  }
 
   public RestExtension includeBootstrap() {
     config.includeBootstrap = true;
@@ -45,7 +35,7 @@ public class RestExtension extends AbstractExtension {
   }
 
   public RestExtension addPackage(String packageName) {
-    config.addPackage(packageName);
+    config.addPackages(packageName);
     return this;
   }
 
@@ -60,7 +50,6 @@ public class RestExtension extends AbstractExtension {
     }
 
     addAnnotatedCommands(new Reflections(config.builder));
-
     registerCommands(concordionExtender);
     installCommandToHtmlTagTranslator(concordionExtender);
 
@@ -148,11 +137,11 @@ public class RestExtension extends AbstractExtension {
   }
 
   static class Config {
-    final ConfigurationBuilder builder = ConfigurationBuilder.build("nl.knaw.huygens");
-    boolean includeBootstrap;
-    boolean useCodeMirror;
+    private final ConfigurationBuilder builder = ConfigurationBuilder.build("nl.knaw.huygens");
+    private boolean includeBootstrap;
+    private boolean useCodeMirror;
 
-    void addPackage(String... packages) {
+    void addPackages(String... packages) {
       builder.forPackages(packages);
     }
   }
