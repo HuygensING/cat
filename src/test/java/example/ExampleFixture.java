@@ -29,10 +29,6 @@ public class ExampleFixture extends RestFixture {
     register(ExampleEndpoint.class);  // Jersey registration via inheritance through RestFixture
   }
 
-  public void setupViaExampleCommand(String inputFromTestSpec) {
-    Log.trace("setup via ExampleCommand: [{}]", inputFromTestSpec);
-  }
-
   private static Module guiceModule() {
     return new AbstractModule() {
       @Override
@@ -42,5 +38,9 @@ public class ExampleFixture extends RestFixture {
         bind(HelloService.class).toInstance(() -> "Hello world");
       }
     };
+  }
+
+  public void setupViaExampleCommand(String inputFromTestSpec) {
+    Log.trace("setup via ExampleCommand: [{}]", inputFromTestSpec);
   }
 }
