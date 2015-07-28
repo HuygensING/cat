@@ -1,6 +1,8 @@
 package nl.knaw.huygens.cat;
 
-import java.util.Collections;
+import static java.util.Collections.unmodifiableMap;
+import static nl.knaw.huygens.cat.HuygensNamespace.FIXTURE_VARIABLE_NAME;
+
 import java.util.Map;
 
 import com.google.common.base.Predicate;
@@ -67,7 +69,7 @@ public class RestExtension extends AbstractExtension {
       // Neither SimpleEvaluator nor its super class has a 'getter' for the fixture passed in
       // through its constructor, so as a poor man's solution we redundantly store it as a variable
       final SimpleEvaluator evaluator = new SimpleEvaluator(fixture);
-      evaluator.setVariable(HuygensNamespace.FIXTURE_VARIABLE_NAME, fixture);
+      evaluator.setVariable(FIXTURE_VARIABLE_NAME, fixture);
       return evaluator;
     };
   }
@@ -103,7 +105,7 @@ public class RestExtension extends AbstractExtension {
   }
 
   private void installCommandToHtmlTagTranslator(ConcordionExtender concordionExtender) {
-    final Map<String, String> readOnlyView = Collections.unmodifiableMap(commandNameToHtmlTagMapping);
+    final Map<String, String> readOnlyView = unmodifiableMap(commandNameToHtmlTagMapping);
     final TagTranslator translator = TagTranslator.forTags(readOnlyView);
     concordionExtender.withDocumentParsingListener(translator);
   }
