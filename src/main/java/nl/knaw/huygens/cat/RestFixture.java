@@ -16,6 +16,7 @@ import javax.ws.rs.core.Response.StatusType;
 import javax.ws.rs.core.UriBuilder;
 import java.net.URI;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -24,14 +25,13 @@ import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.squarespace.jersey2.guice.BootstrapUtils;
 import nl.knaw.huygens.Log;
-import org.concordion.api.extension.Extensions;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTest;
 import org.glassfish.jersey.test.TestProperties;
 
-@Extensions(RestExtension.class)
 public class RestFixture extends JerseyTest {
+  private static final EnumSet<Family> SUCCESSFUL_STATUS_FAMILIES = EnumSet.of(REDIRECTION, SUCCESSFUL);
 
   // TODO: make this configurable
   private static final URI BASE_URI = UriBuilder.fromUri("https://localhost/").port(4242).build();
@@ -189,9 +189,7 @@ public class RestFixture extends JerseyTest {
   }
 
   public boolean wasSuccessful() {
-    final StatusType statusInfo = statusInfo();
-    final Family family = statusInfo.getFamily();
-    return family == SUCCESSFUL || family == REDIRECTION;
+    return SUCCESSFUL_STATUS_FAMILIES.contains(statusFamily());
   }
 
   @Override
@@ -208,6 +206,10 @@ public class RestFixture extends JerseyTest {
 
   private StatusType statusInfo() {
     return response.getStatusInfo();
+  }
+
+  private Family statusFamily() {
+    return statusInfo().getFamily();
   }
 
   private String normalizeHostInfo(String s) {

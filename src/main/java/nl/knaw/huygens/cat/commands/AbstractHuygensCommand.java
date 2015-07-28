@@ -1,6 +1,6 @@
 package nl.knaw.huygens.cat.commands;
 
-import nl.knaw.huygens.cat.FixtureEvaluator;
+import nl.knaw.huygens.cat.HuygensNamespace;
 import nl.knaw.huygens.cat.RestFixture;
 import org.concordion.api.AbstractCommand;
 import org.concordion.api.Element;
@@ -20,7 +20,7 @@ public abstract class AbstractHuygensCommand extends AbstractCommand {
   }
 
   protected RestFixture getFixture(Evaluator evaluator) {
-    return ((FixtureEvaluator) evaluator).getFixture();
+    return (RestFixture) evaluator.getVariable(HuygensNamespace.FIXTURE_VARIABLE_NAME);
   }
 
   protected void succeed(ResultRecorder resultRecorder, Element element) {

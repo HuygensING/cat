@@ -1,42 +1,55 @@
 package nl.knaw.huygens.cat;
 
-import java.lang.annotation.Annotation;
+import java.util.Collections;
 import java.util.Map;
-import java.util.Set;
 
+import com.google.common.base.Predicate;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import nl.knaw.huygens.Log;
-import nu.xom.Attribute;
-import nu.xom.Document;
-import nu.xom.Element;
-import nu.xom.Elements;
+import nl.knaw.huygens.cat.bootstrap.BootstrapExtension;
+import nl.knaw.huygens.cat.codemirror.CodeMirrorExtension;
+import nl.knaw.huygens.cat.commands.AbstractHuygensCommand;
 import org.concordion.api.Command;
-import org.concordion.api.Resource;
+import org.concordion.api.EvaluatorFactory;
 import org.concordion.api.extension.ConcordionExtender;
-import org.concordion.api.extension.ConcordionExtension;
-import org.concordion.api.listener.DocumentParsingListener;
 import org.concordion.internal.ConcordionBuilder;
 import org.concordion.internal.SimpleEvaluator;
 import org.reflections.Reflections;
+import org.reflections.scanners.SubTypesScanner;
+import org.reflections.scanners.TypeAnnotationsScanner;
+import org.reflections.util.ConfigurationBuilder;
 
-public class RestExtension implements ConcordionExtension {
-  public static final String EXTENSION_NS = "http://huygens.knaw.nl/concordion-acceptance-test";
+public class RestExtension extends AbstractExtension {
+  private final Map<String, String> commandNameToHtmlTagMapping = Maps.newHashMap();
+  private final Config config = new Config();
 
-  private final Set<Class<? extends Command>> commands = Sets.newHashSet();
-  private final Map<String, String> htmlCommandTags = Maps.newHashMap();
+  public RestExtension includeBootstrap() {
+    config.includeBootstrap = true;
+    return this;
+  }
 
-  public RestExtension() {
-    // TODO: get rid of nl.knaw.huygens, make this an external param somehow
-    addAnnotatedCommands(new Reflections("nl.knaw.huygens"));
+  public RestExtension enableCodeMirror() {
+    config.enableCodeMirror = true;
+    return this;
+  }
+
+  public RestExtension addPackages(String... packages) {
+    config.addPackages(packages);
+    return this;
   }
 
   @Override
   public void addTo(ConcordionExtender concordionExtender) {
-    registerCommands(concordionExtender);
-    registerCommandToHtmlTranslator(concordionExtender);
-    registerCodeMirror(concordionExtender);
-    registerBootstrap(concordionExtender);
+    if (config.enableCodeMirror) {
+      new CodeMirrorExtension().addTo(concordionExtender);
+    }
+
+    if (config.includeBootstrap) {
+      new BootstrapExtension().addTo(concordionExtender);
+    }
+
+    addAnnotatedCommands(concordionExtender, new Reflections(config.builder));
+    installCommandToHtmlTagTranslator(concordionExtender);
 
     /* HACK to make the fixture (the instance of the JerseyTest) available in our Concordion Commands.
      *
@@ -46,82 +59,37 @@ public class RestExtension implements ConcordionExtension {
      * of our own where we can make the fixture available at a later time.
      */
     final ConcordionBuilder concordionBuilder = (ConcordionBuilder) concordionExtender;
-    concordionBuilder.withEvaluatorFactory(fixture -> {
-      if (fixture instanceof RestFixture) {
-        return new FixtureEvaluator((RestFixture) fixture);
+    concordionBuilder.withEvaluatorFactory(createEvaluatorFactory());
+  }
+
+  private EvaluatorFactory createEvaluatorFactory() {
+    return fixture -> {
+      // Neither SimpleEvaluator nor its super class has a 'getter' for the fixture passed in
+      // through its constructor, so as a poor man's solution we redundantly store it as a variable
+      final SimpleEvaluator evaluator = new SimpleEvaluator(fixture);
+      evaluator.setVariable(HuygensNamespace.FIXTURE_VARIABLE_NAME, fixture);
+      return evaluator;
+    };
+  }
+
+  private void addAnnotatedCommands(ConcordionExtender concordionExtender, Reflections scanner) {
+    scanner.getTypesAnnotatedWith(HuygensCommand.class).forEach(type -> {
+      if (Command.class.isAssignableFrom(type)) {
+        Log.debug("Found: {}", type.getCanonicalName());
+
+        @SuppressWarnings("unchecked")
+        final Class<? extends Command> commandClass = (Class<? extends Command>) type;
+
+        final HuygensCommand annotation = type.getAnnotation(HuygensCommand.class);
+        concordionExtender.withCommand(HuygensNamespace.asString(), annotation.name(), instantiate(commandClass));
+        Log.trace("+- will handle command <{}>", annotation.name());
+
+        commandNameToHtmlTagMapping.put(annotation.name(), annotation.htmlTag());
+        Log.trace("+- configures <{}> to be translated to HTML tag <{}>", annotation.name(), annotation.htmlTag());
+      } else {
+        Log.warn("Ignoring @{} class {} as it does not implement {}", //
+            HuygensCommand.class.getSimpleName(), type.getName(), Command.class.getCanonicalName());
       }
-      return new SimpleEvaluator(fixture);
-    });
-  }
-
-  private void registerCodeMirror(ConcordionExtender extender) {
-    linkCSS(extender, "/codemirror/codemirror.css");
-    linkCSS(extender, "/codemirror/enable-codemirror.css");
-    linkCSS(extender, "/codemirror/merge.css");
-
-    linkJavaScript(extender, "/codemirror/codemirror.js");
-    linkJavaScript(extender, "/codemirror/javascript.js");
-    linkJavaScript(extender, "/codemirror/diff_match_patch.js");
-    linkJavaScript(extender, "/codemirror/merge.js");
-    linkJavaScript(extender, "/codemirror/enable-codemirror.js");
-  }
-
-  private void registerBootstrap(ConcordionExtender extender) {
-    linkCSS(extender, "/bootstrap/bootstrap.css");
-    linkCSS(extender, "/bootstrap/enable-bootstrap.css");
-
-    linkJavaScript(extender, "/jquery/jquery.min.js");
-    linkJavaScript(extender, "/bootstrap/bootstrap.min.js");
-  }
-
-  private void linkCSS(ConcordionExtender extender, String location) {
-    extender.withLinkedCSS(location, resource(location));
-  }
-
-  private void linkJavaScript(ConcordionExtender extender, String location) {
-    extender.withLinkedJavaScript(location, resource(location));
-  }
-
-  private Resource resource(String location) {
-    return new Resource(location);
-  }
-
-  private void addAnnotatedCommands(Reflections scanner) {
-    scanForAnnotatedClasses(scanner, HuygensCommand.class).forEach(this::addCommand);
-  }
-
-  private Set<Class<?>> scanForAnnotatedClasses(Reflections scanner, Class<? extends Annotation> annotationClass) {
-    final Set<Class<?>> annotatedClasses = scanner.getTypesAnnotatedWith(annotationClass);
-
-    if (Log.isDebugEnabled()) {
-      final int annotatedClassesCount = annotatedClasses.size();
-      final String annotationName = annotationClass.getSimpleName();
-      final String classOrClasses = annotatedClassesCount == 1 ? "class" : "classes";
-      Log.debug("Found {} @{} annotated {}", annotatedClassesCount, annotationName, classOrClasses);
-    }
-
-    return annotatedClasses;
-  }
-
-  @SuppressWarnings("unchecked")
-  private void addCommand(Class<?> candidate) {
-    if (Command.class.isAssignableFrom(candidate)) {
-      Log.trace("Adding command: {}", candidate);
-      commands.add((Class<? extends Command>) candidate);
-    } else {
-      Log.warn("Ignoring @{} class {} as it does not implement {}", //
-          HuygensCommand.class.getSimpleName(), candidate.getName(), Command.class.getName());
-    }
-  }
-
-  private void registerCommands(ConcordionExtender concordionExtender) {
-    commands.stream().forEach(cmd -> {
-      final HuygensCommand annotation = cmd.getAnnotation(HuygensCommand.class);
-      final String name = annotation.name();
-      final String tag = annotation.htmlTag();
-      Log.trace("Command <{}> is translated to HTML tag <{}> and handled by {}", name, tag, cmd.getSimpleName());
-      htmlCommandTags.put(name, tag);
-      concordionExtender.withCommand(EXTENSION_NS, name, instantiate(cmd));
     });
   }
 
@@ -134,33 +102,29 @@ public class RestExtension implements ConcordionExtension {
     }
   }
 
-  private void registerCommandToHtmlTranslator(ConcordionExtender concordionExtender) {
-    concordionExtender.withDocumentParsingListener(new DocumentParsingListener() {
-      @Override
-      public void beforeParsing(Document document) {
-        translate(document.getRootElement());
-      }
-
-      private void translate(Element element) {
-        final Elements children = element.getChildElements();
-        for (int i = 0; i < children.size(); i++) {
-          translate(children.get(i));
-        }
-
-        if (EXTENSION_NS.equals(element.getNamespaceURI())) {
-          Attribute attr = new Attribute(element.getLocalName(), "");
-          attr.setNamespace("h", EXTENSION_NS);
-          element.addAttribute(attr);
-          element.setNamespacePrefix("");
-          element.setNamespaceURI(null);
-          element.setLocalName(translate(element.getLocalName()));
-        }
-      }
-
-      private String translate(String localName) {
-        return htmlCommandTags.getOrDefault(localName, localName);
-      }
-    });
+  private void installCommandToHtmlTagTranslator(ConcordionExtender concordionExtender) {
+    final Map<String, String> readOnlyView = Collections.unmodifiableMap(commandNameToHtmlTagMapping);
+    final TagTranslator translator = TagTranslator.forTags(readOnlyView);
+    concordionExtender.withDocumentParsingListener(translator);
   }
 
+  static class Config {
+    private static String COMMANDS_PACKAGE = AbstractHuygensCommand.class.getPackage().getName();
+    private static Predicate<String> IS_JAVA_CLASS_FILE = s -> s.endsWith(".class");
+    private static Predicate<String> IS_COMMAND = s -> s.startsWith(HuygensCommand.class.getCanonicalName());
+
+    private final ConfigurationBuilder builder = new ConfigurationBuilder() //
+        .forPackages(COMMANDS_PACKAGE) //
+        .filterInputsBy(IS_JAVA_CLASS_FILE) //
+        .setScanners( //
+            new SubTypesScanner(), //
+            new TypeAnnotationsScanner().filterResultsBy(IS_COMMAND));
+
+    private boolean includeBootstrap;
+    private boolean enableCodeMirror;
+
+    void addPackages(String... packages) {
+      builder.forPackages(packages);
+    }
+  }
 }

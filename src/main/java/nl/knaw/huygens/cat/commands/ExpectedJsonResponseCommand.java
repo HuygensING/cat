@@ -22,7 +22,11 @@ import org.concordion.api.ResultRecorder;
 
 @HuygensCommand(name = "jsonResponse", htmlTag = "pre")
 public class ExpectedJsonResponseCommand extends AbstractHuygensCommand {
+  private final ObjectMapper objectMapper;
+
   public ExpectedJsonResponseCommand() {
+    objectMapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+
     addListener(new RestResultRenderer());
   }
 
@@ -31,14 +35,14 @@ public class ExpectedJsonResponseCommand extends AbstractHuygensCommand {
     final Element element = commandCall.getElement();
     element.addStyleClass("json");
 
-    final JsonNode expectedJson = asJson(element.getText());
+    final JsonNode expectedJson = parseJson(element.getText());
     final String expected = pretty(expectedJson);
     element.moveChildrenTo(new Element("tmp"));
     element.appendText(expected);
 
     final Optional<String> actual = getFixture(evaluator).response();
     if (actual.isPresent()) {
-      final JsonNode actualJson = asJson(actual.get());
+      final JsonNode actualJson = parseJson(actual.get());
       if (includesJson(actualJson, expectedJson)) {
         succeed(resultRecorder, element);
       } else {
@@ -138,9 +142,9 @@ public class ExpectedJsonResponseCommand extends AbstractHuygensCommand {
     return true;
   }
 
-  private JsonNode asJson(String json) {
+  private JsonNode parseJson(String json) {
     try {
-      return new ObjectMapper().readTree(json);
+      return objectMapper.readTree(json);
     } catch (IOException e) {
       throw new RuntimeException("Failed to parse json: " + json, e);
     }
@@ -148,7 +152,7 @@ public class ExpectedJsonResponseCommand extends AbstractHuygensCommand {
 
   private String pretty(JsonNode node) {
     try {
-      return new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT).writeValueAsString(node);
+      return objectMapper.writeValueAsString(node);
     } catch (JsonProcessingException e) {
       throw new RuntimeException("Failed to process json: " + node.asText(), e);
     }
