@@ -4,6 +4,8 @@ import nu.xom.Attribute;
 import nu.xom.Element;
 
 public class HuygensNamespace {
+  public static final String FIXTURE_VARIABLE_NAME = "#fixture";
+
   private static final String EXTENSION_NS = "http://huygens.knaw.nl/concordion-acceptance-test";
   private static final String DEFAULT_PREFIX = "h";
 

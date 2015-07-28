@@ -10,6 +10,7 @@ import nl.knaw.huygens.cat.bootstrap.BootstrapExtension;
 import nl.knaw.huygens.cat.codemirror.CodeMirrorExtension;
 import nl.knaw.huygens.cat.commands.AbstractHuygensCommand;
 import org.concordion.api.Command;
+import org.concordion.api.EvaluatorFactory;
 import org.concordion.api.extension.ConcordionExtender;
 import org.concordion.internal.ConcordionBuilder;
 import org.concordion.internal.SimpleEvaluator;
@@ -27,8 +28,8 @@ public class RestExtension extends AbstractExtension {
     return this;
   }
 
-  public RestExtension useCodeMirror() {
-    config.useCodeMirror = true;
+  public RestExtension enableCodeMirror() {
+    config.enableCodeMirror = true;
     return this;
   }
 
@@ -39,7 +40,7 @@ public class RestExtension extends AbstractExtension {
 
   @Override
   public void addTo(ConcordionExtender concordionExtender) {
-    if (config.useCodeMirror) {
+    if (config.enableCodeMirror) {
       new CodeMirrorExtension().addTo(concordionExtender);
     }
 
@@ -58,12 +59,17 @@ public class RestExtension extends AbstractExtension {
      * of our own where we can make the fixture available at a later time.
      */
     final ConcordionBuilder concordionBuilder = (ConcordionBuilder) concordionExtender;
-    concordionBuilder.withEvaluatorFactory(fixture -> {
-      if (fixture instanceof RestFixture) {
-        return new FixtureEvaluator((RestFixture) fixture);
-      }
-      return new SimpleEvaluator(fixture);
-    });
+    concordionBuilder.withEvaluatorFactory(createEvaluatorFactory());
+  }
+
+  private EvaluatorFactory createEvaluatorFactory() {
+    return fixture -> {
+      // Neither SimpleEvaluator nor its super class has a 'getter' for the fixture passed in
+      // through its constructor, so as a poor man's solution we redundantly store it as a variable
+      final SimpleEvaluator evaluator = new SimpleEvaluator(fixture);
+      evaluator.setVariable(HuygensNamespace.FIXTURE_VARIABLE_NAME, fixture);
+      return evaluator;
+    };
   }
 
   private void addAnnotatedCommands(ConcordionExtender concordionExtender, Reflections scanner) {
@@ -115,7 +121,7 @@ public class RestExtension extends AbstractExtension {
             new TypeAnnotationsScanner().filterResultsBy(IS_COMMAND));
 
     private boolean includeBootstrap;
-    private boolean useCodeMirror;
+    private boolean enableCodeMirror;
 
     void addPackages(String... packages) {
       builder.forPackages(packages);
