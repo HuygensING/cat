@@ -8,6 +8,7 @@ import com.google.common.collect.Maps;
 import nl.knaw.huygens.Log;
 import nl.knaw.huygens.cat.bootstrap.BootstrapExtension;
 import nl.knaw.huygens.cat.codemirror.CodeMirrorExtension;
+import nl.knaw.huygens.cat.commands.AbstractHuygensCommand;
 import org.concordion.api.Command;
 import org.concordion.api.extension.ConcordionExtender;
 import org.concordion.internal.ConcordionBuilder;
@@ -102,12 +103,12 @@ public class RestExtension extends AbstractExtension {
   }
 
   static class Config {
-    private static String DEFAULT_PACKAGE = Config.class.getPackage().getName();
+    private static String COMMANDS_PACKAGE = AbstractHuygensCommand.class.getPackage().getName();
     private static Predicate<String> IS_JAVA_CLASS_FILE = s -> s.endsWith(".class");
     private static Predicate<String> IS_COMMAND = s -> s.startsWith(HuygensCommand.class.getCanonicalName());
 
     private final ConfigurationBuilder builder = new ConfigurationBuilder() //
-        .forPackages(DEFAULT_PACKAGE) //
+        .forPackages(COMMANDS_PACKAGE) //
         .filterInputsBy(IS_JAVA_CLASS_FILE) //
         .setScanners( //
             new SubTypesScanner(), //

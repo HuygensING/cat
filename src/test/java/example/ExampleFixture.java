@@ -17,7 +17,7 @@ public class ExampleFixture extends RestFixture {
   @SuppressWarnings("unused")
   public RestExtension extensionFoundViaReflection //
       = new RestExtension()   //
-      .addPackages("example") // "nl.knaw.huygens.cat" is already included; add to scan for project specific commands
+      .addPackages("example") // add packages to be scanned for project specific commands
       .useCodeMirror()        // Use CodeMirror to show side-by-side diffs when JSON results mismatch
       .includeBootstrap();    // Bootstrap{.css,js} can be included to spice up the output
 
