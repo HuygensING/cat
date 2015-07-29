@@ -7,11 +7,17 @@
 
 <body data-desc="Example GET tests">
     <div id="create-post-html" data-desc="Let's test a GET in HTML">
+        <span>Span of text before request</span>
         <h:request>
             When I <h:get>/example</h:get>
             using <h:setHeader name="accept">text/html</h:setHeader>
             I should receive <h:status>200 OK</h:status>
             and response body: <h:responseBody>Hello world</h:responseBody>
+        </h:request>
+        <span>Span of text after request</span>
+        <h:request>
+            Woops another request :-)
+            <h:get>/example</h:get> leads to another <h:status>200 OK</h:status>
         </h:request>
     </div>
 

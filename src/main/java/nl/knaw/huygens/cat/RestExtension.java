@@ -4,10 +4,12 @@ import static java.util.Collections.unmodifiableMap;
 import static java.util.Optional.ofNullable;
 import static nl.knaw.huygens.cat.HuygensNamespace.FIXTURE_VARIABLE_NAME;
 
+import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
 import com.google.common.base.Predicate;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import nl.knaw.huygens.Log;
 import nl.knaw.huygens.cat.bootstrap.BootstrapExtension;
@@ -16,11 +18,14 @@ import nl.knaw.huygens.cat.commands.AbstractHuygensCommand;
 import nu.xom.Attribute;
 import nu.xom.Document;
 import nu.xom.Element;
+import nu.xom.Elements;
 import nu.xom.Nodes;
 import nu.xom.Text;
 import org.concordion.api.Command;
 import org.concordion.api.EvaluatorFactory;
 import org.concordion.api.extension.ConcordionExtender;
+import org.concordion.api.listener.SpecificationProcessingEvent;
+import org.concordion.api.listener.SpecificationProcessingListener;
 import org.concordion.internal.ConcordionBuilder;
 import org.concordion.internal.SimpleEvaluator;
 import org.reflections.Reflections;
@@ -62,6 +67,62 @@ public class RestExtension extends AbstractExtension {
 
     concordionExtender.withDocumentParsingListener(this::visitDocument);
 
+    concordionExtender.withSpecificationProcessingListener(new SpecificationProcessingListener() {
+      private final List<String> failedTests = Lists.newArrayList();
+
+      @Override
+      public void beforeProcessingSpecification(SpecificationProcessingEvent event) {
+      }
+
+      @Override
+      public void afterProcessingSpecification(SpecificationProcessingEvent event) {
+        final org.concordion.api.Element root = event.getRootElement();
+        if (hasFailure(root)) {
+          Log.trace("Test has failed test(s): {}", failedTests);
+          markFailedTests(root);
+        }
+      }
+
+      private void markFailedTests(org.concordion.api.Element element) {
+        if (element.getLocalName().equals("a") && failedTests.contains(element.getAttributeValue("href"))) {
+          Log.trace("Index: {}", element.toXML());
+          org.concordion.api.Element failureBadge = new org.concordion.api.Element("span");
+          failureBadge.addAttribute("class", "badge");
+          failureBadge.appendText("Failed");
+          element.appendNonBreakingSpace();
+          element.appendChild(failureBadge);
+        }
+        final org.concordion.api.Element[] childElements = element.getChildElements();
+        for (org.concordion.api.Element childElement : childElements) {
+          markFailedTests(childElement);
+        }
+      }
+
+      private boolean hasFailure(org.concordion.api.Element element) {
+        final String classValue = element.getAttributeValue("class");
+        if (classValue != null && classValue.contains("failure")) {
+          Log.trace("FAIL-1: {}", element.toXML());
+          return true;
+        }
+
+        boolean foundFailure = false;
+        final org.concordion.api.Element[] childElements = element.getChildElements();
+        for (final org.concordion.api.Element child : childElements) {
+          if (hasFailure(child)) {
+            foundFailure = true;
+            if (element.getLocalName().equals("div") && element.getAttributeValue("id") != null) {
+              failedTests.add("#" + element.getAttributeValue("id"));
+              final org.concordion.api.Element div = element.getFirstChildElement("div");
+              final String divClass = div.getAttributeValue("class");
+              div.addAttribute("class", divClass.replace("panel-default", "panel-danger"));
+              Log.trace("class: {}", div.getAttributeValue("class"));
+            }
+          }
+        }
+        return foundFailure;
+      }
+    });
+
     /* HACK to make the fixture (the instance of the JerseyTest) available in our Concordion Commands.
      *
      * Using the force / reading the source, we know that the incoming ConcordionExtender at this point is
@@ -78,8 +139,6 @@ public class RestExtension extends AbstractExtension {
     Element body = root.getFirstChildElement("body");
     Element container = new Element("div");
     container.addAttribute(new Attribute("class", "container"));
-    body.insertChild(new Text("\n"), 0);
-    body.insertChild(container, 1);
 
     Attribute suiteDesc = body.getAttribute("data-desc");
     if (suiteDesc != null) {
@@ -90,9 +149,7 @@ public class RestExtension extends AbstractExtension {
       Element jumboTron = new Element("div");
       jumboTron.addAttribute(new Attribute("class", "jumbotron"));
       jumboTron.appendChild(h1);
-      container.appendChild(new Text("\n  "));
       container.appendChild(jumboTron);
-      container.appendChild(new Text("\n  "));
     }
 
     Element row = new Element("div");
@@ -110,45 +167,44 @@ public class RestExtension extends AbstractExtension {
     Element tabContentDiv = new Element("div");
     colContent.appendChild(tabContentDiv);
     tabContentDiv.addAttribute(new Attribute("class", "tab-content"));
-    tabContentDiv.appendChild(new Text("\n"));
 
-    Map<String, Attribute> identifiedDivs = Maps.newLinkedHashMap();
-    final Nodes divsWithId = document.query("//div[@id]");
-    for (int i = 0; i < divsWithId.size(); i++) {
-      Element div = (Element) divsWithId.get(i);
-      final Attribute id = div.getAttribute("id");
-      final Attribute description = div.getAttribute("data-desc");
-      identifiedDivs.put(id.getValue(), description);
+    Map<String, Element> identifiedDivs = Maps.newLinkedHashMap();
+    Elements testDivs = body.getChildElements("div");
+    for (int i = 0; i < testDivs.size(); i++) {
+      Element testDiv = testDivs.get(i);
+      final Attribute id = testDiv.getAttribute("id");
+      final Attribute description = testDiv.getAttribute("data-desc");
+      identifiedDivs.put(id.getValue(), testDiv);
 
-      div.detach();
-      div.removeAttribute(description);
       if (i == 0) {
-        div.addAttribute(new Attribute("class", "tab-pane fade in active"));
+        testDiv.addAttribute(new Attribute("class", "tab-pane fade in active"));
       } else {
-        div.addAttribute(new Attribute("class", "tab-pane"));
+        testDiv.addAttribute(new Attribute("class", "tab-pane"));
       }
-      div.appendChild(new Text("  "));
 
-      tabContentDiv.appendChild(new Text("  "));
-      tabContentDiv.appendChild(div);
-      tabContentDiv.appendChild(new Text("\n"));
+      testDiv.detach();
+      tabContentDiv.appendChild(testDiv);
 
-      Element request = div.getFirstChildElement("div");
-      final int indexOf = div.indexOf(request);
-      Log.trace("indexOf={}", indexOf);
-      request.detach();
+      Element panel = new Element("div");
+      panel.addAttribute(new Attribute("class", "panel panel-default"));
+
       Element panelHeading = new Element("div");
-      Element bold = new Element("b");
+      panel.appendChild(panelHeading);
+
+      Element bold = new Element("b");  // TODO: move to css
       panelHeading.addAttribute(new Attribute("class", "panel-heading"));
       panelHeading.appendChild(bold);
       bold.appendChild(new Text(description.getValue()));
+
       Element panelBody = new Element("div");
+      panel.appendChild(panelBody);
+
       panelBody.addAttribute(new Attribute("class", "panel-body"));
-      panelBody.appendChild("\n  ");
-      panelBody.appendChild(request);
-      panelBody.appendChild("\n");
-      div.insertChild(panelBody, indexOf);
-      div.insertChild(panelHeading, indexOf);
+      final Nodes nodes = testDiv.removeChildren();
+      for (int j = 0; j < nodes.size(); j++) {
+        panelBody.appendChild(nodes.get(j));
+      }
+      testDiv.appendChild(panel);
     }
     Log.trace("Identified divs: {}", identifiedDivs);
 
@@ -156,11 +212,11 @@ public class RestExtension extends AbstractExtension {
     colMenu.appendChild(ul);
     ul.addAttribute(new Attribute("class", "nav nav-pills nav-stacked"));
     ul.appendChild(new Text("\n"));
-    identifiedDivs.forEach(new BiConsumer<String, Attribute>() {
+    identifiedDivs.forEach(new BiConsumer<String, Element>() {
       private boolean first = true;
 
       @Override
-      public void accept(String id, Attribute desc) {
+      public void accept(String id, Element testDiv) {
         final Element li = new Element("li");
         if (first) {
           first = false;
@@ -169,13 +225,25 @@ public class RestExtension extends AbstractExtension {
         final Element a = new Element("a");
         a.addAttribute(new Attribute("href", String.format("#%s", id)));
         a.addAttribute(new Attribute("data-toggle", "tab"));
-        a.appendChild(new Text(ofNullable(desc).map(Attribute::getValue).orElseGet(() -> String.format("#%s", id))));
+        String desc = testDiv.getAttributeValue("data-desc");
+//      testDiv.removeAttribute(description);
+        a.appendChild(new Text(ofNullable(desc).orElseGet(() -> String.format("#%s", id))));
+        Log.trace("testDiv: {}", testDiv.toXML());
+        Log.trace("query yields: size={}", testDiv.query(".//*[@class]").size());
+        if (testDiv.query("//*[@class='failure']").size() > 0) {
+          Element spanFailed = new Element("span");
+          spanFailed.addAttribute(new Attribute("class", "badge"));
+          spanFailed.appendChild(new Text("Failed!"));
+          a.appendChild(spanFailed);
+        }
         li.appendChild(a);
         ul.appendChild("  ");
         ul.appendChild(li);
         ul.appendChild(new Text("\n"));
       }
     });
+    body.insertChild(new Text("\n"), 0);
+    body.insertChild(container, 1);
   }
 
   private EvaluatorFactory createEvaluatorFactory() {
