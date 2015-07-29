@@ -1,34 +1,28 @@
-<html xmlns:c="http://www.concordion.org/2007/concordion"
-      xmlns:h="http://huygens.knaw.nl/concordion-acceptance-test"
+<html xmlns:h="http://huygens.knaw.nl/concordion-acceptance-test"
       xmlns:xsi="http://www.w3.org/1999/xhtml"
       xsi:schemaLocation="http://huygens.knaw.nl/concordion-acceptance-test
                           http://huygensing.github.io/alexandria/xsd/concordion-rest.xsd">
 
 <title>Example Concordion Acceptance Test</title>
 
-<body class="container">
-
-<h2 class="page-header">Example GET test</h2>
-
-<h:example>Example:</h:example>
-
-<div id="create-post" class="panel panel-default">
-    <div class="panel-heading"><b>Let's test a GET</b> </div>
-    <div class="panel-body">
+<body data-desc="Example GET tests">
+    <div id="create-post-html" data-desc="Let's test a GET in HTML">
         <h:request>
-            When I <h:get>/example</h:get> using <h:setHeader name="accept">text/html</h:setHeader>
-            I should receive <h:status>200 OK</h:status> and response body:
-            <h:responseBody>Hello world</h:responseBody>
-        </h:request>
-
-        <h:request>
-            When I <h:get>/example</h:get> using <h:setHeader name="accept">application/json</h:setHeader>
-            I should receive <h:status>200 OK</h:status> and response body:
-            <h:jsonResponse>{ "hello": "world" }</h:jsonResponse>
+            When I <h:get>/example</h:get>
+            using <h:setHeader name="accept">text/html</h:setHeader>
+            I should receive <h:status>200 OK</h:status>
+            and response body: <h:responseBody>Hello world</h:responseBody>
         </h:request>
     </div>
-</div>
 
+    <div id="create-post-json" data-desc="Let's test a GET in JSON">
+        <h:request>
+            When I <h:get>/example</h:get>
+            using <h:setHeader name="accept">application/json</h:setHeader>
+            I should receive <h:status>200 OK</h:status>
+            and response body: <h:jsonResponse>{ "hello": "world" }</h:jsonResponse>
+        </h:request>
+    </div>
 </body>
 
 </html>
