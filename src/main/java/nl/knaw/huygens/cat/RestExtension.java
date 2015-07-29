@@ -4,12 +4,10 @@ import static java.util.Collections.unmodifiableMap;
 import static java.util.Optional.ofNullable;
 import static nl.knaw.huygens.cat.HuygensNamespace.FIXTURE_VARIABLE_NAME;
 
-import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
 import com.google.common.base.Predicate;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import nl.knaw.huygens.Log;
 import nl.knaw.huygens.cat.bootstrap.BootstrapExtension;
@@ -24,8 +22,6 @@ import nu.xom.Text;
 import org.concordion.api.Command;
 import org.concordion.api.EvaluatorFactory;
 import org.concordion.api.extension.ConcordionExtender;
-import org.concordion.api.listener.SpecificationProcessingEvent;
-import org.concordion.api.listener.SpecificationProcessingListener;
 import org.concordion.internal.ConcordionBuilder;
 import org.concordion.internal.SimpleEvaluator;
 import org.reflections.Reflections;
@@ -60,68 +56,13 @@ public class RestExtension extends AbstractExtension {
 
     if (config.includeBootstrap) {
       new BootstrapExtension().addTo(concordionExtender);
+      concordionExtender.withSpecificationProcessingListener(new FailedTestMarker());
     }
 
     scanAndRegisterAnnotatedCommands(concordionExtender, new Reflections(config.builder));
     installCommandToHtmlTagTranslator(concordionExtender);
 
     concordionExtender.withDocumentParsingListener(this::visitDocument);
-
-    concordionExtender.withSpecificationProcessingListener(new SpecificationProcessingListener() {
-      private final List<String> failedTests = Lists.newArrayList();
-
-      @Override
-      public void beforeProcessingSpecification(SpecificationProcessingEvent event) {
-      }
-
-      @Override
-      public void afterProcessingSpecification(SpecificationProcessingEvent event) {
-        final org.concordion.api.Element root = event.getRootElement();
-        if (hasFailure(root)) {
-          Log.trace("Test has failed test(s): {}", failedTests);
-          markFailedTests(root);
-        }
-      }
-
-      private void markFailedTests(org.concordion.api.Element element) {
-        if (element.getLocalName().equals("a") && failedTests.contains(element.getAttributeValue("href"))) {
-          Log.trace("Index: {}", element.toXML());
-          org.concordion.api.Element failureBadge = new org.concordion.api.Element("span");
-          failureBadge.addAttribute("class", "badge");
-          failureBadge.appendText("Failed");
-          element.appendNonBreakingSpace();
-          element.appendChild(failureBadge);
-        }
-        final org.concordion.api.Element[] childElements = element.getChildElements();
-        for (org.concordion.api.Element childElement : childElements) {
-          markFailedTests(childElement);
-        }
-      }
-
-      private boolean hasFailure(org.concordion.api.Element element) {
-        final String classValue = element.getAttributeValue("class");
-        if (classValue != null && classValue.contains("failure")) {
-          Log.trace("FAIL-1: {}", element.toXML());
-          return true;
-        }
-
-        boolean foundFailure = false;
-        final org.concordion.api.Element[] childElements = element.getChildElements();
-        for (final org.concordion.api.Element child : childElements) {
-          if (hasFailure(child)) {
-            foundFailure = true;
-            if (element.getLocalName().equals("div") && element.getAttributeValue("id") != null) {
-              failedTests.add("#" + element.getAttributeValue("id"));
-              final org.concordion.api.Element div = element.getFirstChildElement("div");
-              final String divClass = div.getAttributeValue("class");
-              div.addAttribute("class", divClass.replace("panel-default", "panel-danger"));
-              Log.trace("class: {}", div.getAttributeValue("class"));
-            }
-          }
-        }
-        return foundFailure;
-      }
-    });
 
     /* HACK to make the fixture (the instance of the JerseyTest) available in our Concordion Commands.
      *
@@ -310,4 +251,5 @@ public class RestExtension extends AbstractExtension {
       builder.forPackages(packages);
     }
   }
+
 }
