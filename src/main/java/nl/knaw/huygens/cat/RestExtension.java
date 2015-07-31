@@ -56,7 +56,6 @@ public class RestExtension extends AbstractExtension {
 
     if (config.includeBootstrap) {
       new BootstrapExtension().addTo(concordionExtender);
-      concordionExtender.withSpecificationProcessingListener(new FailedTestMarker());
     }
 
     scanAndRegisterAnnotatedCommands(concordionExtender, new Reflections(config.builder));

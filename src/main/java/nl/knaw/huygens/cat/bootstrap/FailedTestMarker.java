@@ -1,9 +1,10 @@
-package nl.knaw.huygens.cat;
+package nl.knaw.huygens.cat.bootstrap;
 
 import java.util.List;
 
 import com.google.common.collect.Lists;
 import nl.knaw.huygens.Log;
+import nl.knaw.huygens.cat.SpecificationProcessingAdapter;
 import org.concordion.api.Element;
 import org.concordion.api.listener.SpecificationProcessingEvent;
 
