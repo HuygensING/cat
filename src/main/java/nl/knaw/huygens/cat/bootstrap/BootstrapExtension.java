@@ -12,6 +12,7 @@ public class BootstrapExtension extends AbstractExtension {
     linkJavaScript(concordionExtender, "/jquery/jquery.min.js");
     linkJavaScript(concordionExtender, "/bootstrap/bootstrap.min.js");
 
+    concordionExtender.withDocumentParsingListener(new NavigationBuilder());
     concordionExtender.withSpecificationProcessingListener(new FailedTestMarker());
   }
 }
