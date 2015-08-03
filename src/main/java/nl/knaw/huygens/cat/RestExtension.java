@@ -113,14 +113,14 @@ public class RestExtension extends AbstractExtension {
   static class Config {
     private static String COMMANDS_PACKAGE = AbstractHuygensCommand.class.getPackage().getName();
     private static Predicate<String> IS_JAVA_CLASS_FILE = s -> s.endsWith(".class");
-    private static Predicate<String> IS_COMMAND = s -> s.startsWith(HuygensCommand.class.getCanonicalName());
+    private static Predicate<String> IS_HUYGENS_COMMAND = s -> s.startsWith(HuygensCommand.class.getCanonicalName());
 
     private final ConfigurationBuilder builder = new ConfigurationBuilder() //
         .forPackages(COMMANDS_PACKAGE) //
         .filterInputsBy(IS_JAVA_CLASS_FILE) //
         .setScanners( //
             new SubTypesScanner(), //
-            new TypeAnnotationsScanner().filterResultsBy(IS_COMMAND));
+            new TypeAnnotationsScanner().filterResultsBy(IS_HUYGENS_COMMAND));
 
     private boolean includeBootstrap;
     private boolean enableCodeMirror;
