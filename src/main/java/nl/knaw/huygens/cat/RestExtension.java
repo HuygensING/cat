@@ -1,6 +1,8 @@
 package nl.knaw.huygens.cat;
 
-import java.util.Collections;
+import static java.util.Collections.unmodifiableMap;
+import static nl.knaw.huygens.cat.HuygensNamespace.FIXTURE_VARIABLE_NAME;
+
 import java.util.Map;
 
 import com.google.common.base.Predicate;
@@ -48,7 +50,7 @@ public class RestExtension extends AbstractExtension {
       new BootstrapExtension().addTo(concordionExtender);
     }
 
-    addAnnotatedCommands(concordionExtender, new Reflections(config.builder));
+    scanAndRegisterAnnotatedCommands(concordionExtender, new Reflections(config.builder));
     installCommandToHtmlTagTranslator(concordionExtender);
 
     /* HACK to make the fixture (the instance of the JerseyTest) available in our Concordion Commands.
@@ -62,23 +64,23 @@ public class RestExtension extends AbstractExtension {
     concordionBuilder.withEvaluatorFactory(createEvaluatorFactory());
   }
 
+
   private EvaluatorFactory createEvaluatorFactory() {
     return fixture -> {
       // Neither SimpleEvaluator nor its super class has a 'getter' for the fixture passed in
       // through its constructor, so as a poor man's solution we redundantly store it as a variable
       final SimpleEvaluator evaluator = new SimpleEvaluator(fixture);
-      evaluator.setVariable(HuygensNamespace.FIXTURE_VARIABLE_NAME, fixture);
+      evaluator.setVariable(FIXTURE_VARIABLE_NAME, fixture);
       return evaluator;
     };
   }
 
-  private void addAnnotatedCommands(ConcordionExtender concordionExtender, Reflections scanner) {
+  private void scanAndRegisterAnnotatedCommands(ConcordionExtender concordionExtender, Reflections scanner) {
     scanner.getTypesAnnotatedWith(HuygensCommand.class).forEach(type -> {
       if (Command.class.isAssignableFrom(type)) {
         Log.debug("Found: {}", type.getCanonicalName());
 
-        @SuppressWarnings("unchecked")
-        final Class<? extends Command> commandClass = (Class<? extends Command>) type;
+        @SuppressWarnings("unchecked") final Class<? extends Command> commandClass = (Class<? extends Command>) type;
 
         final HuygensCommand annotation = type.getAnnotation(HuygensCommand.class);
         concordionExtender.withCommand(HuygensNamespace.asString(), annotation.name(), instantiate(commandClass));
@@ -103,7 +105,7 @@ public class RestExtension extends AbstractExtension {
   }
 
   private void installCommandToHtmlTagTranslator(ConcordionExtender concordionExtender) {
-    final Map<String, String> readOnlyView = Collections.unmodifiableMap(commandNameToHtmlTagMapping);
+    final Map<String, String> readOnlyView = unmodifiableMap(commandNameToHtmlTagMapping);
     final TagTranslator translator = TagTranslator.forTags(readOnlyView);
     concordionExtender.withDocumentParsingListener(translator);
   }
@@ -111,14 +113,14 @@ public class RestExtension extends AbstractExtension {
   static class Config {
     private static String COMMANDS_PACKAGE = AbstractHuygensCommand.class.getPackage().getName();
     private static Predicate<String> IS_JAVA_CLASS_FILE = s -> s.endsWith(".class");
-    private static Predicate<String> IS_COMMAND = s -> s.startsWith(HuygensCommand.class.getCanonicalName());
+    private static Predicate<String> IS_HUYGENS_COMMAND = s -> s.startsWith(HuygensCommand.class.getCanonicalName());
 
     private final ConfigurationBuilder builder = new ConfigurationBuilder() //
         .forPackages(COMMANDS_PACKAGE) //
         .filterInputsBy(IS_JAVA_CLASS_FILE) //
         .setScanners( //
             new SubTypesScanner(), //
-            new TypeAnnotationsScanner().filterResultsBy(IS_COMMAND));
+            new TypeAnnotationsScanner().filterResultsBy(IS_HUYGENS_COMMAND));
 
     private boolean includeBootstrap;
     private boolean enableCodeMirror;
@@ -127,4 +129,5 @@ public class RestExtension extends AbstractExtension {
       builder.forPackages(packages);
     }
   }
+
 }
