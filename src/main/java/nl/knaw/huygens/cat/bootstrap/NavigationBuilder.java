@@ -1,6 +1,10 @@
 package nl.knaw.huygens.cat.bootstrap;
 
+import java.util.Iterator;
 import java.util.Optional;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import nu.xom.Attribute;
 import nu.xom.Document;
@@ -10,40 +14,87 @@ import nu.xom.Nodes;
 import org.concordion.api.listener.DocumentParsingListener;
 
 class NavigationBuilder implements DocumentParsingListener {
+  private Element tabOverview;
+  private Element tabContent;
+  private Element body;
+  private Element container;
+  private boolean isFirst = true;
+
+  private static Predicate<Element> hasId() {
+    return div -> div.getAttribute("id") != null;
+  }
+
+  private static Predicate<Element> hasDescription() {
+    return div -> div.getAttribute("data-desc") != null;
+  }
+
+  private static Predicate<Element> isTestCase() {
+    return hasId().and(hasDescription());
+  }
+
+  private static Stream<Element> stream(final Elements elements) {
+    final Iterable<Element> iterable = () -> new Iterator<Element>() {
+      private int curIndex = 0;
+
+      @Override
+      public boolean hasNext() {
+        return curIndex < elements.size();
+      }
+
+      @Override
+      public Element next() {
+        return elements.get(curIndex++);
+      }
+    };
+
+    return StreamSupport.stream(iterable.spliterator(), false);
+  }
+
   @Override
   public void beforeParsing(Document document) {
     installNavigationElements(document);
+    promoteSuiteDescriptionToJumbotron();
+    streamTestCases().forEach(this::installNavigationForTest);
   }
 
   private void installNavigationElements(Document document) {
-    final Element body = bodyOf(document);
-    final Elements testDivs = childDivsOf(body); // get these now, before we alter the structure of body
+    body = bodyOf(document);
+    container = appendDiv(body, "container");
 
-    final Element container = appendDiv(body, "container");
     final Element row = appendDiv(container, "row");
-    final Element tabOverview = appendUl(appendDiv(row, "col-md-3"), "nav nav-pills nav-stacked");
-    final Element tabContent = appendDiv(appendDiv(row, "col-md-9"), "tab-content");
-
-    for (int i = 0; i < testDivs.size(); i++) {
-      final Element testDiv = testDivs.get(i);
-      addClass(testDiv, i == 0 ? "tab-pane fade active in" : "tab-pane fade");
-
-      restructureTest(testDiv, tabOverview, tabContent, i == 0);
-    }
-
-    transferSuiteDescription(body, container);
+    tabOverview = appendUl(appendDiv(row, "col-md-4"), "nav nav-pills nav-stacked");
+    tabContent = appendDiv(appendDiv(row, "col-md-8"), "tab-content");
   }
 
-  private void transferSuiteDescription(Element body, Element container) {
-    Optional.ofNullable(body.getAttribute("data-desc")).ifPresent(testSuiteDescription -> {
-      body.removeAttribute(testSuiteDescription);
-      createJumbotron(container, testSuiteDescription.getValue());
-    });
+  private void promoteSuiteDescriptionToJumbotron() {
+    Optional.ofNullable(body.getAttribute("data-desc")) //
+        .map(body::removeAttribute) //
+        .map(Attribute::getValue) //
+        .ifPresent(this::insertJumbotron);
   }
 
-  private void restructureTest(Element testDiv, Element tabOverview, Element tabContent, boolean isActive) {
+  private Stream<Element> streamTestCases() {
+    return streamDivs(body).filter(isTestCase());
+  }
+
+  private Stream<Element> streamDivs(Element element) {
+    return stream(element.getChildElements("div"));
+  }
+
+  private void insertJumbotron(String description) {
+    container.insertChild(createDiv("jumbotron", createH1(description)), 0);
+  }
+
+  private void installNavigationForTest(Element testDiv) {
+    addClass(testDiv, isFirst ? "tab-pane fade active in" : "tab-pane fade");
+    restructureTest(testDiv, isFirst);
+    isFirst = false;
+  }
+
+  private void restructureTest(Element testDiv, boolean asActiveTab) {
     final Element li = appendElement(tabOverview, "li");
-    if (isActive) {
+
+    if (asActiveTab) {
       addClass(li, "active");
     }
 
@@ -58,10 +109,7 @@ class NavigationBuilder implements DocumentParsingListener {
       failureBadge.appendChild("Failed");
     }
 
-    // Relocate testDiv from body to tab's content pane
-    testDiv.detach();
-    tabContent.appendChild(testDiv);
-
+    relocateToContentPane(testDiv);
     restructureIntoPanel(testDiv);
   }
 
@@ -69,8 +117,9 @@ class NavigationBuilder implements DocumentParsingListener {
     return element.query("//*[@class='failure']").size() > 0;
   }
 
-  private Elements childDivsOf(Element body) {
-    return body.getChildElements("div");
+  private void relocateToContentPane(Element element) {
+    element.detach();
+    tabContent.appendChild(element);
   }
 
   private void restructureIntoPanel(Element element) {
@@ -82,10 +131,10 @@ class NavigationBuilder implements DocumentParsingListener {
     final Element panelHeading = appendDiv(panel, "panel-heading");
     final Element panelBody = appendDiv(panel, "panel-body");
 
-    // Transfer the description from the element to its heading
+    // Transfer the description from the element to the panel heading
     final Attribute description = element.getAttribute("data-desc");
+    appendElement(panelHeading, "strong").appendChild(description.getValue());
     element.removeAttribute(description);
-    appendElement(panelHeading, "b").appendChild(description.getValue());
 
     // Finally, relocate the children inside the panel-body
     for (int j = 0; j < nodes.size(); j++) {
@@ -117,13 +166,6 @@ class NavigationBuilder implements DocumentParsingListener {
     Element element = createElement(type);
     parent.appendChild(element);
     return element;
-  }
-
-  private Element createJumbotron(Element parent, String description) {
-    Element jumbotron = createDiv("jumbotron", createH1(description));
-    parent.insertChild(jumbotron, 0);
-//    parent.appendChild(jumbotron);
-    return jumbotron;
   }
 
   private Element appendDiv(Element parent, String className, Element... children) {
