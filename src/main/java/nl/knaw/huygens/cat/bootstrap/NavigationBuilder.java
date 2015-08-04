@@ -1,5 +1,7 @@
 package nl.knaw.huygens.cat.bootstrap;
 
+import java.util.Optional;
+
 import nu.xom.Attribute;
 import nu.xom.Document;
 import nu.xom.Element;
@@ -17,8 +19,6 @@ class NavigationBuilder implements DocumentParsingListener {
     final Element body = bodyOf(document);
     final Elements testDivs = childDivsOf(body); // get these now, before we alter the structure of body
 
-    insertJumbotron(body);
-
     final Element container = appendDiv(body, "container");
     final Element row = appendDiv(container, "row");
     final Element tabOverview = appendUl(appendDiv(row, "col-md-3"), "nav nav-pills nav-stacked");
@@ -30,6 +30,15 @@ class NavigationBuilder implements DocumentParsingListener {
 
       restructureTest(testDiv, tabOverview, tabContent, i == 0);
     }
+
+    transferSuiteDescription(body, container);
+  }
+
+  private void transferSuiteDescription(Element body, Element container) {
+    Optional.ofNullable(body.getAttribute("data-desc")).ifPresent(testSuiteDescription -> {
+      body.removeAttribute(testSuiteDescription);
+      createJumbotron(container, testSuiteDescription.getValue());
+    });
   }
 
   private void restructureTest(Element testDiv, Element tabOverview, Element tabContent, boolean isActive) {
@@ -58,14 +67,6 @@ class NavigationBuilder implements DocumentParsingListener {
 
   private boolean indicatesFailure(Element element) {
     return element.query("//*[@class='failure']").size() > 0;
-  }
-
-  private void insertJumbotron(Element body) {
-    Attribute suiteDesc = body.getAttribute("data-desc");
-    if (suiteDesc != null) {
-      body.removeAttribute(suiteDesc);
-      createJumbotron(body, suiteDesc.getValue());
-    }
   }
 
   private Elements childDivsOf(Element body) {
@@ -121,6 +122,7 @@ class NavigationBuilder implements DocumentParsingListener {
   private Element createJumbotron(Element parent, String description) {
     Element jumbotron = createDiv("jumbotron", createH1(description));
     parent.insertChild(jumbotron, 0);
+//    parent.appendChild(jumbotron);
     return jumbotron;
   }
 
