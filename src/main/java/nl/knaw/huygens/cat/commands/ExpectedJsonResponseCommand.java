@@ -32,7 +32,7 @@ public class ExpectedJsonResponseCommand extends AbstractHuygensCommand {
 
   @Override
   public void verify(CommandCall commandCall, Evaluator evaluator, ResultRecorder resultRecorder) {
-    final Element element = commandCall.getElement();
+    final Element element = substituteVariables(evaluator, commandCall.getElement()); // was: commandCall.getElement();
     element.addStyleClass("json");
 
     final JsonNode expectedJson = parseJson(element.getText());

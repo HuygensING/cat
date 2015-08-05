@@ -62,8 +62,8 @@ class NavigationBuilder implements DocumentParsingListener {
     container = appendDiv(body, "container");
 
     final Element row = appendDiv(container, "row");
-    tabOverview = appendUl(appendDiv(row, "col-md-4"), "nav nav-pills nav-stacked");
-    tabContent = appendDiv(appendDiv(row, "col-md-8"), "tab-content");
+    tabOverview = appendUl(appendDiv(row, "col-md-3"), "nav nav-pills nav-stacked");
+    tabContent = appendDiv(appendDiv(row, "col-md-9"), "tab-content");
   }
 
   private void promoteSuiteDescriptionToJumbotron() {

@@ -15,8 +15,11 @@ abstract public class HttpMethodCommand extends AbstractHuygensCommand {
   @Override
   public void setUp(CommandCall commandCall, Evaluator evaluator, ResultRecorder resultRecorder) {
     final Element element = commandCall.getElement();
-    element.addStyleClass(method.toLowerCase());
 
-    getFixture(evaluator).method(method).url(element.getText());
+    final Element replacement = substituteVariables(evaluator, element);
+    replacement.addStyleClass(method.toLowerCase());
+
+    getFixture(evaluator).method(method).url(replacement.getText());
   }
+
 }

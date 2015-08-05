@@ -1,4 +1,5 @@
-<html xmlns:h="http://huygens.knaw.nl/concordion-acceptance-test"
+<html xmlns:c="http://www.concordion.org/2007/concordion"
+      xmlns:h="http://huygens.knaw.nl/concordion-acceptance-test"
       xmlns:xsi="http://www.w3.org/1999/xhtml"
       xsi:schemaLocation="http://huygens.knaw.nl/concordion-acceptance-test
                           http://huygensing.github.io/alexandria/xsd/concordion-rest.xsd">
@@ -6,29 +7,47 @@
 <title>Example Concordion Acceptance Test</title>
 
 <body data-desc="Example GET tests">
-    <div id="create-post-html" data-desc="Let's test a GET in HTML">
-        <span>Span of text before request</span>
-        <h:request>
-            When I <h:get>/example</h:get>
-            using <h:setHeader name="accept">text/html</h:setHeader>
-            I should receive <h:status>200 OK</h:status>
-            and response body: <h:responseBody>Hello world</h:responseBody>
-        </h:request>
-        <span>Span of text after request</span>
-        <h:request>
-            Woops another request :-)
-            <h:get>/example</h:get> leads to another <h:status>200 OK</h:status>
-        </h:request>
-    </div>
+<div id="create-post-html" data-desc="Let's test a GET in HTML">
+    <span>Span of text before request</span>
+    <h:request>
+        When I
+        <h:get>/example</h:get>
+        using
+        <h:setHeader name="accept">text/html</h:setHeader>
+        I should receive
+        <h:status>200 OK</h:status>
+        and response body:
+        <h:responseBody>Hello world</h:responseBody>
+    </h:request>
+    <span>Span of text after request</span>
+    <h:request>
+        Woops another request :-)
+        <h:get>/example</h:get>
+        leads to another
+        <h:status>200 OK</h:status>
+    </h:request>
+</div>
 
-    <div id="create-post-json" data-desc="Let's test a GET in JSON">
-        <h:request>
-            When I <h:get>/example</h:get>
-            using <h:setHeader name="accept">application/json</h:setHeader>
-            I should receive <h:status>200 OK</h:status>
-            and response body: <h:jsonResponse>{ "hello": "world" }</h:jsonResponse>
-        </h:request>
-    </div>
+<div id="create-post-json" data-desc="Let's test a GET in JSON">
+    <h:request>
+        When I
+        <h:get>/example</h:get>
+        using
+        <h:setHeader name="accept">application/json</h:setHeader>
+        I should receive
+        <h:status>200 OK</h:status>
+        and response body:
+        <h:jsonResponse>{ "hello": "world" }</h:jsonResponse>
+    </h:request>
+</div>
+
+<div id="post-var" data-desc="Use concordion variables">
+    To address /example/<span c:set="#uuid">75cec2da-3b3d-11e5-8ab8-bb73bf33c75c</span>
+    <h:request>
+        I can
+        <h:post>/example/$uuid</h:post>
+    </h:request>
+</div>
 </body>
 
 </html>
