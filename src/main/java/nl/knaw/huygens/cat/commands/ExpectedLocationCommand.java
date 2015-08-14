@@ -6,6 +6,7 @@ import java.util.function.Supplier;
 
 import com.google.common.base.Splitter;
 import com.google.common.collect.Iterables;
+import nl.knaw.huygens.Log;
 import nl.knaw.huygens.cat.HuygensCommand;
 import nl.knaw.huygens.cat.RestFixture;
 import org.concordion.api.CommandCall;
@@ -24,18 +25,21 @@ public class ExpectedLocationCommand extends AbstractHuygensCommand {
   @Override
   public void verify(CommandCall commandCall, Evaluator evaluator, ResultRecorder resultRecorder) {
     final Element element = commandCall.getElement();
-    element.addStyleClass("location");
+    final Element replacement = substituteVariables(evaluator, element);
+    replacement.addStyleClass("location");
 
-    final String expectedLocation = element.getText();
+    final String expectedLocation = replacement.getText();
     final String type = typeFrom(element);
 
     final RestFixture fixture = getFixture(evaluator);
     final String actualLocation = fixture.location().map(l -> extract(l, type)).orElse("(not set)");
 
+    Log.trace("expectedLocation: [{}]", expectedLocation);
+    Log.trace("actualLocation  : [{}]", actualLocation);
     if (actualLocation.equals(expectedLocation)) {
-      succeed(resultRecorder, element);
+      succeed(resultRecorder, replacement);
     } else {
-      fail(resultRecorder, element, actualLocation, expectedLocation);
+      fail(resultRecorder, replacement, actualLocation, expectedLocation);
     }
   }
 
