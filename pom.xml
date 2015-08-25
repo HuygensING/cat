@@ -6,7 +6,7 @@
 
   <groupId>nl.knaw.huygens</groupId>
   <artifactId>cat</artifactId>
-  <version>1.2.3</version>
+  <version>1.2.4</version>
 
   <name>Concordion Acceptance Test</name>
 
@@ -32,7 +32,7 @@
     <jersey2-guice.version>0.10</jersey2-guice.version>
 
     <junit.version>4.12</junit.version>
-    <log.version>1.0.1</log.version>
+    <log.version>1.1.0</log.version>
     <maven-compiler.version>3.1</maven-compiler.version>
     <reflections.version>0.9.10</reflections.version>
     <xom.version>1.2.10</xom.version>
