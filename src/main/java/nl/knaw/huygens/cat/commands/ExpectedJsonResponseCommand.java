@@ -7,27 +7,41 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.function.Function;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import nl.knaw.huygens.Log;
-import nl.knaw.huygens.cat.HuygensCommand;
-import nl.knaw.huygens.cat.RestResultRenderer;
 import org.concordion.api.CommandCall;
 import org.concordion.api.Element;
 import org.concordion.api.Evaluator;
 import org.concordion.api.ResultRecorder;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.google.common.collect.ImmutableMap;
+
+import nl.knaw.huygens.Log;
+import nl.knaw.huygens.cat.HuygensCommand;
+import nl.knaw.huygens.cat.RestResultRenderer;
+
 @HuygensCommand(name = "jsonResponse", htmlTag = "pre")
 public class ExpectedJsonResponseCommand extends AbstractHuygensCommand {
+  private final Map<String, Function<JsonNode, Boolean>> validatorFunctions;
+
   private final ObjectMapper objectMapper;
 
   public ExpectedJsonResponseCommand() {
     objectMapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
 
     addListener(new RestResultRenderer());
+
+    validatorFunctions = ImmutableMap.<String, Function<JsonNode, Boolean>>builder() //
+        .put("{date.anyValid}", this::isValidDate) //
+        .put("{date.beforeNow}", this::isDateBeforeNow) //
+        .put("{git.validCommitId}", this::isValidGitCommitId) //
+        .put("{uuid.anyValid}", this::isValidUUID) //
+        .build();
   }
 
   @Override
@@ -54,8 +68,6 @@ public class ExpectedJsonResponseCommand extends AbstractHuygensCommand {
   }
 
   private boolean includesJson(JsonNode actual, JsonNode expected) {
-    Log.trace("includesJson.actual  =[{}]", actual);
-    Log.trace("includesJson.expected=[{}]", expected);
     if (expected.isArray()) {
       return includesJsonArray(actual, expected);
     }
@@ -65,35 +77,48 @@ public class ExpectedJsonResponseCommand extends AbstractHuygensCommand {
     }
 
     if (expected.isTextual()) {
-      // TODO: rather than if-else store these in a mapping from "{format}" to a JsonChecker (to be written) per format
-      switch (expected.asText()) {
-        case "{date.anyValid}":
-          try {
-            Log.trace("Parsing [{}] as Instant", actual.asText());
-            Instant.parse(actual.asText());
-            return true;
-          } catch (DateTimeParseException e) {
-            Log.trace("DateTimeParseException: [{}]", e.getMessage());
-            return false;
-          }
-
-        case "{date.beforeNow}":
-          Log.trace("Parsing [{}] as Instant", actual.asText());
-          try {
-            final Instant when = Instant.parse(actual.asText());
-            return when.isBefore(Instant.now());
-          } catch (DateTimeParseException e) {
-            Log.trace("DateTimeParseException: [{}]", e.getMessage());
-            return false;
-          }
-
-        case "{git.validCommitId}":
-          // e.g., "33b3dda729f8465c31a3993fb52dc3a33c93242b"
-          return actual.asText().matches("[0-9a-z]{40}");
+      final Function<JsonNode, Boolean> validatorFunction = validatorFunctions.get(expected.asText());
+      if (validatorFunction != null) {
+        return validatorFunction.apply(actual);
       }
     }
 
     return actual.equals(expected);
+  }
+
+  private boolean isValidDate(JsonNode node) {
+    try {
+      Instant.parse(node.asText());
+      return true;
+    } catch (DateTimeParseException e) {
+      Log.trace("DateTimeParseException: [{}]", e.getMessage());
+      return false;
+    }
+  }
+
+  private boolean isDateBeforeNow(JsonNode node) {
+    try {
+      final Instant when = Instant.parse(node.asText());
+      return when.isBefore(Instant.now());
+    } catch (DateTimeParseException e) {
+      Log.trace("DateTimeParseException: [{}]", e.getMessage());
+      return false;
+    }
+  }
+
+  private Boolean isValidGitCommitId(JsonNode node) {
+    // e.g., "33b3dda729f8465c31a3993fb52dc3a33c93242b"
+    return node.asText().matches("[0-9a-z]{40}");
+  }
+
+  private boolean isValidUUID(JsonNode node) {
+    try {
+      @SuppressWarnings("unused")
+      final UUID justCheckIfItParses = UUID.fromString(node.asText());
+      return true;
+    } catch (IllegalArgumentException dulyNoted) {
+      return false;
+    }
   }
 
   private boolean includesJsonArray(JsonNode actual, JsonNode expected) {
