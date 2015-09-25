@@ -1,5 +1,7 @@
 package nl.knaw.huygens.cat.commands;
 
+import static java.util.Arrays.asList;
+
 import java.io.IOException;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -40,6 +42,7 @@ public class ExpectedJsonResponseCommand extends AbstractHuygensCommand {
         .put("{date.anyValid}", this::isValidDate) //
         .put("{date.beforeNow}", this::isDateBeforeNow) //
         .put("{git.validCommitId}", this::isValidGitCommitId) //
+        .put("{git.validBranch}", this::isValidGitBranch) //
         .put("{uuid.anyValid}", this::isValidUUID) //
         .build();
   }
@@ -106,9 +109,13 @@ public class ExpectedJsonResponseCommand extends AbstractHuygensCommand {
     }
   }
 
-  private Boolean isValidGitCommitId(JsonNode node) {
+  private boolean isValidGitCommitId(JsonNode node) {
     // e.g., "33b3dda729f8465c31a3993fb52dc3a33c93242b"
     return node.asText().matches("[0-9a-z]{40}");
+  }
+
+  private boolean isValidGitBranch(JsonNode node) {
+    return asList("develop", "master").contains(node.asText());
   }
 
   private boolean isValidUUID(JsonNode node) {
