@@ -1,9 +1,18 @@
 package nl.knaw.huygens.cat;
 
 import static java.lang.String.format;
+import static javax.ws.rs.core.HttpHeaders.ACCEPT;
+import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON_TYPE;
 import static javax.ws.rs.core.Response.Status.Family.REDIRECTION;
 import static javax.ws.rs.core.Response.Status.Family.SUCCESSFUL;
+
+import java.net.URI;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.Invocation.Builder;
@@ -14,21 +23,17 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status.Family;
 import javax.ws.rs.core.Response.StatusType;
 import javax.ws.rs.core.UriBuilder;
-import java.net.URI;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
 
-import com.google.inject.Injector;
-import com.google.inject.Module;
-import com.squarespace.jersey2.guice.BootstrapUtils;
-import nl.knaw.huygens.Log;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTest;
 import org.glassfish.jersey.test.TestProperties;
+
+import com.google.inject.Injector;
+import com.google.inject.Module;
+import com.squarespace.jersey2.guice.BootstrapUtils;
+
+import nl.knaw.huygens.Log;
 
 public class RestFixture extends JerseyTest {
   private static final EnumSet<Family> SUCCESSFUL_STATUS_FAMILIES = EnumSet.of(REDIRECTION, SUCCESSFUL);
@@ -123,20 +128,19 @@ public class RestFixture extends JerseyTest {
 
     target = target.path(path);
 
-    Builder invoker;
-    if (headers.containsKey("accept")) {
-      invoker = target.request();
-    } else {
-      invoker = target.request(APPLICATION_JSON_TYPE);
-    }
+    Builder invoker = target.request();
 
     for (Map.Entry<String, String> entry : headers.entrySet()) {
       Log.trace("header: {}: {}", entry.getKey(), entry.getValue());
       invoker = invoker.header(entry.getKey(), entry.getValue());
     }
 
+    invoker = invoker.accept(tryGetHeader(ACCEPT).map(MediaType::valueOf).orElse(APPLICATION_JSON_TYPE));
+
     if (optionalBody.isPresent()) {
-      final MediaType mediaType = optionalContentType.orElse(APPLICATION_JSON_TYPE);
+      final MediaType mediaType = tryGetHeader(CONTENT_TYPE).map(MediaType::valueOf).orElse(APPLICATION_JSON_TYPE);
+//      final MediaType mediaType = optionalContentType.orElse(APPLICATION_JSON_TYPE);
+      Log.trace("optionalBody present, mediaType=[{}]", mediaType);
       response = invoker.method(method, Entity.entity(optionalBody.get(), mediaType), Response.class);
     } else {
       response = invoker.method(method, Response.class);
@@ -168,7 +172,9 @@ public class RestFixture extends JerseyTest {
   }
 
   public void contentType(String type) {
-    optionalContentType = Optional.of(MediaType.valueOf(type));
+    final MediaType value = MediaType.valueOf(type);
+    Log.trace("contentType: {} -> {}", type, value);
+    optionalContentType = Optional.of(value);
   }
 
   public Optional<String> response() {
@@ -202,6 +208,11 @@ public class RestFixture extends JerseyTest {
   @Override
   protected URI getBaseUri() {
     return BASE_URI;
+  }
+
+  private Optional<String> tryGetHeader(final String header) {
+    Log.trace("tryGetHeader, header=[{}]", header);
+    return headers.keySet().stream().filter(header::equalsIgnoreCase).findFirst().map(headers::get);
   }
 
   private StatusType statusInfo() {
