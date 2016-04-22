@@ -3,6 +3,7 @@ package nl.knaw.huygens.cat.commands;
 import static java.util.Arrays.asList;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.Iterator;
@@ -41,6 +42,8 @@ public class ExpectedJsonResponseCommand extends AbstractHuygensCommand {
     validatorFunctions = ImmutableMap.<String, Function<JsonNode, Boolean>>builder() //
         .put("{date.anyValid}", this::isValidDate) //
         .put("{date.beforeNow}", this::isDateBeforeNow) //
+        .put("{date.afterNow}", this::isDateAfterNow) //
+        .put("{duration.anyValid}", this::isValidDuration) //
         .put("{git.validCommitId}", this::isValidGitCommitId) //
         .put("{git.validBranch}", this::isValidGitBranch) //
         .put("{uuid.anyValid}", this::isValidUUID) //
@@ -103,6 +106,26 @@ public class ExpectedJsonResponseCommand extends AbstractHuygensCommand {
     try {
       final Instant when = Instant.parse(node.asText());
       return when.isBefore(Instant.now());
+    } catch (DateTimeParseException e) {
+      Log.trace("DateTimeParseException: [{}]", e.getMessage());
+      return false;
+    }
+  }
+
+  private boolean isDateAfterNow(JsonNode node) {
+    try {
+      final Instant when = Instant.parse(node.asText());
+      return when.isAfter(Instant.now());
+    } catch (DateTimeParseException e) {
+      Log.trace("DateTimeParseException: [{}]", e.getMessage());
+      return false;
+    }
+  }
+
+  boolean isValidDuration(JsonNode node) {
+    try {
+      Duration.parse(node.asText());
+      return true;
     } catch (DateTimeParseException e) {
       Log.trace("DateTimeParseException: [{}]", e.getMessage());
       return false;
