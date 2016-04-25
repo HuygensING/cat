@@ -36,9 +36,8 @@ public class XMLBodyCommand extends AbstractHuygensCommand {
   }
 
   String pretty(String xml) {
-    Transformer transformer;
     try {
-      transformer = TransformerFactory.newInstance().newTransformer();
+      Transformer transformer = TransformerFactory.newInstance().newTransformer();
       transformer.setOutputProperty(OutputKeys.INDENT, "yes");
       transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
       transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
