@@ -8,8 +8,8 @@ import org.concordion.internal.listener.AssertResultRenderer;
 import nl.knaw.huygens.cat.HuygensCommand;
 
 @HuygensCommand(name = "xmlBody", htmlTag = "pre")
-public class XMLBodyCommand extends AbstractHuygensCommand {
-  public XMLBodyCommand() {
+public class XmlBodyCommand extends AbstractHuygensCommand {
+  public XmlBodyCommand() {
     addListener(new AssertResultRenderer());
   }
 
@@ -18,11 +18,12 @@ public class XMLBodyCommand extends AbstractHuygensCommand {
     final Element element = commandCall.getElement();
     element.addStyleClass("xml");
 
-    String body = XmlUtil.pretty(element.getText());
+    String xml = element.getText();
+    String prettyXml = XmlUtil.pretty(xml);
     element.moveChildrenTo(new Element("tmp"));
-    element.appendText(body);
+    element.appendText(prettyXml);
 
-    getFixture(evaluator).body(body);
+    getFixture(evaluator).body(xml);
   }
 
 }
