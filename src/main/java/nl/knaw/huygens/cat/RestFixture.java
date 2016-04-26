@@ -6,14 +6,12 @@ import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON_TYPE;
 import static javax.ws.rs.core.Response.Status.Family.REDIRECTION;
 import static javax.ws.rs.core.Response.Status.Family.SUCCESSFUL;
-
 import java.net.URI;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.Invocation.Builder;
 import javax.ws.rs.client.WebTarget;
@@ -23,16 +21,13 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status.Family;
 import javax.ws.rs.core.Response.StatusType;
 import javax.ws.rs.core.UriBuilder;
-
 import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTest;
 import org.glassfish.jersey.test.TestProperties;
-
 import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.squarespace.jersey2.guice.BootstrapUtils;
-
 import nl.knaw.huygens.Log;
 
 public class RestFixture extends JerseyTest {
@@ -60,6 +55,8 @@ public class RestFixture extends JerseyTest {
   private String method;
 
   private String url;
+
+  private Map<String, Object> queryParams = new HashMap<>();
 
   public static void setupRestFixture(Module module) {
     Log.debug("Setting up Jersey");
@@ -114,19 +111,30 @@ public class RestFixture extends JerseyTest {
   public RestFixture url(String url) {
     Log.trace("url set to: [{}]", url);
     this.url = url;
+    // TODO: queryParams should be a Multimap
+    if (url.contains("?")){
+      String[] parts = url.split("?",2);
+      this.url = parts[0];
+      String[] queryParamStrings = parts[2].split("&");
+      for (String queryParamString : queryParamStrings) {
+        String[] keyvalue = queryParamString.split("=");
+        this.queryParams.put(keyvalue[0], keyvalue[1]);
+      }
+    }
     return this;
   }
 
   public RestFixture execute() {
     Log.trace("executing");
-    request(method, url);
+    request(method, url, queryParams);
     return this;
   }
 
-  public void request(String method, String path) {
+  public void request(String method, String path, Map<String, Object> queryParams) {
     Log.trace("request: method=[{}], path=[{}]", method, path);
 
     target = target.path(path);
+    queryParams.forEach(target::queryParam);
 
     Builder invoker = target.request();
 
@@ -139,7 +147,8 @@ public class RestFixture extends JerseyTest {
 
     if (optionalBody.isPresent()) {
       final MediaType mediaType = tryGetHeader(CONTENT_TYPE).map(MediaType::valueOf).orElse(APPLICATION_JSON_TYPE);
-//      final MediaType mediaType = optionalContentType.orElse(APPLICATION_JSON_TYPE);
+      // final MediaType mediaType =
+      // optionalContentType.orElse(APPLICATION_JSON_TYPE);
       Log.trace("optionalBody present, mediaType=[{}]", mediaType);
       response = invoker.method(method, Entity.entity(optionalBody.get(), mediaType), Response.class);
     } else {
