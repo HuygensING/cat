@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import javax.ws.rs.client.Entity;
@@ -32,6 +33,7 @@ import com.google.common.collect.Multimap;
 import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.squarespace.jersey2.guice.BootstrapUtils;
+import jersey.repackaged.com.google.common.collect.Lists;
 import nl.knaw.huygens.Log;
 
 public class RestFixture extends JerseyTest {
@@ -132,11 +134,14 @@ public class RestFixture extends JerseyTest {
     return this;
   }
 
-  public void request(String method, String path, Map<String, Collection<Object>> map) {
-    Log.trace("request: method=[{}], path=[{}]", method, path);
+  public void request(String method, String path, Map<String, Collection<Object>> queryParams) {
+    Log.trace("request: method=[{}], path=[{}], queryParams=[{}]", method, path, queryParams);
 
     target = target.path(path);
-    map.forEach(target::queryParam);
+    queryParams.forEach((k, vc) -> {
+      Object[] array = Lists.newArrayList(vc).toArray();
+      target = target.queryParam(k, array);
+    });
 
     Builder invoker = target.request();
 
