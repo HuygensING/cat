@@ -11,7 +11,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import javax.ws.rs.client.Entity;
@@ -105,6 +104,7 @@ public class RestFixture extends JerseyTest {
     response = null;
     entity = Optional.empty();
     headers.clear();
+    queryParams.clear();
     Log.trace("+- done (request details cleared)");
   }
 

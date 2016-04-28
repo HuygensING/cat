@@ -54,6 +54,18 @@
     </h:request>
 </div>
 
+<div id="get-query-params2" data-desc="Let's test a GET in JSON with query params">
+    <h:request>
+        When I
+        <h:get>/example/query?par1=Oh&amp;par2=No</h:get>
+        using
+        <h:setHeader name="accept">application/json</h:setHeader>
+        I should receive
+        <h:status>200 OK</h:status>
+        and response body:
+        <h:jsonResponse>{ "par1": "Oh", "par2": "No" }</h:jsonResponse>
+    </h:request>
+</div>
 
 <div id="post-var" data-desc="Use concordion variables">
     To address /example/<span c:set="#uuid">75cec2da-3b3d-11e5-8ab8-bb73bf33c75c</span>
