@@ -1,17 +1,16 @@
 package nl.knaw.huygens.cat.commands;
 
 import java.io.IOException;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import nl.knaw.huygens.cat.HuygensCommand;
 import org.concordion.api.CommandCall;
 import org.concordion.api.Element;
 import org.concordion.api.Evaluator;
 import org.concordion.api.ResultRecorder;
 import org.concordion.internal.listener.AssertResultRenderer;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import nl.knaw.huygens.cat.HuygensCommand;
 
 @HuygensCommand(name = "jsonBody", htmlTag = "pre")
 public class JsonBodyCommand extends AbstractHuygensCommand {
@@ -21,7 +20,7 @@ public class JsonBodyCommand extends AbstractHuygensCommand {
 
   @Override
   public void setUp(CommandCall commandCall, Evaluator evaluator, ResultRecorder resultRecorder) {
-    final Element element = commandCall.getElement();
+    final Element element = substituteVariables(evaluator, commandCall.getElement());
     element.addStyleClass("json");
 
     String body = pretty(asJson(element.getText()));

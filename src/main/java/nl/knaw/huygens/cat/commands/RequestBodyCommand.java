@@ -15,7 +15,7 @@ public class RequestBodyCommand extends AbstractHuygensCommand {
 
   @Override
   public void setUp(CommandCall commandCall, Evaluator evaluator, ResultRecorder resultRecorder) {
-    final Element element = commandCall.getElement();
+    final Element element = substituteVariables(evaluator, commandCall.getElement());;
     String body = element.getText();
     element.moveChildrenTo(new Element("tmp"));
     element.appendText(body);

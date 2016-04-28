@@ -15,7 +15,7 @@ public class XmlBodyCommand extends AbstractHuygensCommand {
 
   @Override
   public void setUp(CommandCall commandCall, Evaluator evaluator, ResultRecorder resultRecorder) {
-    final Element element = commandCall.getElement();
+    final Element element = substituteVariables(evaluator, commandCall.getElement());
     element.addStyleClass("xml");
 
     String xml = element.getText();
