@@ -2,18 +2,20 @@ package nl.knaw.huygens.cat.bootstrap;
 
 import java.util.Iterator;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-
+import org.concordion.api.listener.DocumentParsingListener;
 import nu.xom.Attribute;
 import nu.xom.Document;
 import nu.xom.Element;
 import nu.xom.Elements;
 import nu.xom.Nodes;
-import org.concordion.api.listener.DocumentParsingListener;
 
 class NavigationBuilder implements DocumentParsingListener {
+  private static final String ATTRIBUTE_ID = "id";
+  private static final String ATTRIBUTE_DATA_DESC = "data-desc";
   private Element tabOverview;
   private Element tabContent;
   private Element body;
@@ -21,11 +23,11 @@ class NavigationBuilder implements DocumentParsingListener {
   private boolean isFirst = true;
 
   private static Predicate<Element> hasId() {
-    return div -> div.getAttribute("id") != null;
+    return div -> div.getAttribute(ATTRIBUTE_ID) != null;
   }
 
   private static Predicate<Element> hasDescription() {
-    return div -> div.getAttribute("data-desc") != null;
+    return div -> div.getAttribute(ATTRIBUTE_DATA_DESC) != null;
   }
 
   private static Predicate<Element> isTestCase() {
@@ -54,7 +56,8 @@ class NavigationBuilder implements DocumentParsingListener {
   public void beforeParsing(Document document) {
     installNavigationElements(document);
     promoteSuiteDescriptionToJumbotron();
-    streamTestCases().forEach(this::installNavigationForTest);
+    AtomicInteger counter = new AtomicInteger();
+    streamTestCases().forEach(d -> installNavigationForTest(d, counter.incrementAndGet()));
   }
 
   private void installNavigationElements(Document document) {
@@ -67,7 +70,7 @@ class NavigationBuilder implements DocumentParsingListener {
   }
 
   private void promoteSuiteDescriptionToJumbotron() {
-    Optional.ofNullable(body.getAttribute("data-desc")) //
+    Optional.ofNullable(body.getAttribute(ATTRIBUTE_DATA_DESC)) //
         .map(body::removeAttribute) //
         .map(Attribute::getValue) //
         .ifPresent(this::insertJumbotron);
@@ -85,13 +88,17 @@ class NavigationBuilder implements DocumentParsingListener {
     container.insertChild(createDiv("jumbotron", createH1(description)), 0);
   }
 
-  private void installNavigationForTest(Element testDiv) {
+  private String numbered(String description, int i) {
+    return i + ") " + description;
+  }
+
+  private void installNavigationForTest(Element testDiv, int i) {
     addClass(testDiv, isFirst ? "tab-pane fade active in" : "tab-pane fade");
-    restructureTest(testDiv, isFirst);
+    restructureTest(testDiv, isFirst, i);
     isFirst = false;
   }
 
-  private void restructureTest(Element testDiv, boolean asActiveTab) {
+  private void restructureTest(Element testDiv, boolean asActiveTab, int i) {
     final Element li = appendElement(tabOverview, "li");
 
     if (asActiveTab) {
@@ -99,9 +106,9 @@ class NavigationBuilder implements DocumentParsingListener {
     }
 
     final Element a = appendElement(li, "a");
-    addAttribute(a, "href", "#" + testDiv.getAttributeValue("id"));
+    addAttribute(a, "href", "#" + testDiv.getAttributeValue(ATTRIBUTE_ID));
     addAttribute(a, "data-toggle", "tab");
-    a.appendChild(testDiv.getAttributeValue("data-desc"));
+    a.appendChild(numbered(testDiv.getAttributeValue(ATTRIBUTE_DATA_DESC),i));
 
     if (indicatesFailure(testDiv)) {
       final Element failureBadge = appendElement(a, "span");
@@ -110,7 +117,7 @@ class NavigationBuilder implements DocumentParsingListener {
     }
 
     relocateToContentPane(testDiv);
-    restructureIntoPanel(testDiv);
+    restructureIntoPanel(testDiv, i);
   }
 
   private boolean indicatesFailure(Element element) {
@@ -122,7 +129,7 @@ class NavigationBuilder implements DocumentParsingListener {
     tabContent.appendChild(element);
   }
 
-  private void restructureIntoPanel(Element element) {
+  private void restructureIntoPanel(Element element, int i) {
     // First unlink all the children
     final Nodes nodes = element.removeChildren();
 
@@ -132,8 +139,8 @@ class NavigationBuilder implements DocumentParsingListener {
     final Element panelBody = appendDiv(panel, "panel-body");
 
     // Transfer the description from the element to the panel heading
-    final Attribute description = element.getAttribute("data-desc");
-    appendElement(panelHeading, "strong").appendChild(description.getValue());
+    final Attribute description = element.getAttribute(ATTRIBUTE_DATA_DESC);
+    appendElement(panelHeading, "strong").appendChild(numbered(description.getValue(),i));
     element.removeAttribute(description);
 
     // Finally, relocate the children inside the panel-body
